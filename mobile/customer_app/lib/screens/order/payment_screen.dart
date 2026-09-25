@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api.dart';
 import '../../i18n/i18n.dart';
+import '../../services/cart_service.dart';
 import '../../services/checkout_service.dart';
 import '../../state/cart_state.dart';
 import '../../state/checkout_state.dart';
@@ -113,6 +114,15 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       });
       if (!mounted) return;
       ref.read(checkoutProvider.notifier).reset();
+
+      // Le serveur ne vide pas le panier à la création de la commande : sans ce
+      // nettoyage, les mêmes articles restent au panier et peuvent être
+      // commandés une seconde fois.
+      try {
+        await CartService.clear();
+      } catch (_) {
+        // Le panier sera vidé au prochain rafraîchissement.
+      }
       await ref.read(cartProvider.notifier).refresh();
       if (!mounted) return;
       context.go('/order/confirmed/${order['id']}?reference=${order['reference'] ?? ''}');

@@ -15,16 +15,47 @@ class CheckoutService {
       ));
 
   /// Points de distribution capables de livrer cette adresse.
-  static Future<List<Map<String, dynamic>>> eligibleNodes(
+  ///
+  /// La réponse sépare les magasins retenus de ceux écartés, avec le motif :
+  /// hors rayon, pas de créneau ce jour-là, stock insuffisant. Le tunnel s'en
+  /// sert pour expliquer au client ce qui bloque au lieu d'un message unique.
+  static Future<({
+    List<Map<String, dynamic>> eligible,
+    List<Map<String, dynamic>> ineligible,
+    Map<String, dynamic>? best,
+  })> eligibleNodes(
     String addressId,
     List<Map<String, dynamic>> cartItems, {
     String? date,
-  }) async =>
-      Api.asList(await Api.post('/customer/checkout/eligible-nodes', body: {
+  }) async {
+    final data = Api.asMap(await Api.post(
+      '/customer/checkout/eligible-nodes',
+      body: {
         'address_id': addressId,
         'cart_items': cartItems,
         if (date != null) 'date': date,
-      }));
+      },
+    ));
+    return (
+      eligible: Api.asList(data['eligible']),
+      ineligible: Api.asList(data['ineligible']),
+      best: data['best_node'] is Map ? Api.asMap(data['best_node']) : null,
+    );
+  }
+
+  /// Motifs renvoyés par le serveur pour un magasin écarté.
+  static Set<String> reasonsOf(List<Map<String, dynamic>> ineligible) {
+    final codes = <String>{};
+    for (final node in ineligible) {
+      final raisons = node['reasons'];
+      if (raisons is List) {
+        for (final r in raisons) {
+          if (r is Map && r['code'] is String) codes.add(r['code'] as String);
+        }
+      }
+    }
+    return codes;
+  }
 
   /// Points de retrait possibles pour ce panier.
   static Future<List<Map<String, dynamic>>> pickupNodes(

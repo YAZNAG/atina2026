@@ -78,8 +78,10 @@ class FauxReseau implements HttpClientAdapter {
             'description': null,
           },
         ],
+        // Codes réels du back-office : « home » et « pickup ».
         'delivery_types': [
-          {'id': 'dt-1', 'code': 'delivery', 'name_fr': 'Livraison', 'name_ar': 'توصيل'},
+          {'id': 'dt-1', 'code': 'home', 'name_fr': 'À domicile', 'name_ar': 'إلى المنزل'},
+          {'id': 'dt-2', 'code': 'pickup', 'name_fr': 'Retrait', 'name_ar': 'الاستلام'},
         ],
       };
     }
@@ -99,9 +101,19 @@ class FauxReseau implements HttpClientAdapter {
         'needs_backorder': false,
       };
     }
-    if (chemin.contains('/checkout/pickup-nodes') ||
-        chemin.contains('/checkout/eligible-nodes')) {
-      return _magasins;
+    if (chemin.contains('/checkout/pickup-nodes')) {
+      return {'eligible': _magasins};
+    }
+    if (chemin.contains('/checkout/eligible-nodes')) {
+      // Forme réelle de la réponse : magasins retenus, écartés avec motif, et
+      // le meilleur choix calculé par le serveur.
+      return {
+        'address': _adresses.first,
+        'eligible': _magasins,
+        'ineligible': const [],
+        'best_node': _magasins.first,
+        'date': null,
+      };
     }
     if (chemin.contains('/checkout/calculate')) {
       return {

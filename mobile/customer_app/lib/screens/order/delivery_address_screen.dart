@@ -70,15 +70,37 @@ class _DeliveryAddressScreenState extends ConsumerState<DeliveryAddressScreen> {
     try {
       final cart = ref.read(cartProvider).value ?? {};
       final items = CheckoutService.itemsOf(cart);
-      final nodes = await CheckoutService.eligibleNodes(_selectedId!, items);
+
+      var res = await CheckoutService.eligibleNodes(_selectedId!, items);
+
+      // Sans date, le serveur juge sur aujourd'hui : passé la dernière tournée,
+      // tous les magasins sont écartés faute de créneau. On retente sur demain
+      // avant de conclure que l'adresse n'est pas livrable.
+      if (res.eligible.isEmpty &&
+          CheckoutService.reasonsOf(res.ineligible).contains('no_slots_for_date')) {
+        final demain = DateTime.now().add(const Duration(days: 1));
+        res = await CheckoutService.eligibleNodes(
+          _selectedId!,
+          items,
+          date: '${demain.year}-${demain.month.toString().padLeft(2, '0')}'
+              '-${demain.day.toString().padLeft(2, '0')}',
+        );
+      }
+
       if (!mounted) return;
-      if (nodes.isEmpty) {
-        setState(() => _error = t('Votre adresse est hors zone de livraison'));
+      if (res.eligible.isEmpty) {
+        final motifs = CheckoutService.reasonsOf(res.ineligible);
+        setState(() => _error = motifs.contains('no_slots_for_date')
+            ? t('Aucun créneau disponible pour le moment. Réessayez plus tard.')
+            : motifs.contains('out_of_stock')
+                ? t('Un article de votre panier est indisponible dans les magasins qui livrent chez vous.')
+                : t('Votre adresse est hors zone de livraison'));
         return;
       }
+
       ref.read(checkoutProvider.notifier)
         ..setAddress(address.first)
-        ..setNode(nodes.first);
+        ..setNode(res.best ?? res.eligible.first);
       context.push('/order/datetime');
     } catch (e) {
       setState(() => _error = '$e');

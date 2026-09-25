@@ -6,7 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 @immutable
 class Checkout {
   const Checkout({
-    this.deliveryTypeCode = 'delivery',
+    // Code du back-office : « home » pour la livraison, « pickup » pour le retrait.
+    this.deliveryTypeCode = 'home',
     this.addressId,
     this.address,
     this.nodeId,
