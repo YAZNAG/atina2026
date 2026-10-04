@@ -93,6 +93,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _section(t('COMMANDES'), [
                           _Row(Icons.receipt_long_outlined, t('Historique des commandes'),
                               () => context.push('/order/orders')),
+                          _Row(Icons.my_location, t('Ma localisation'),
+                              () => context.push('/profile/location')),
                           _Row(Icons.location_on_outlined, t('Mes adresses'),
                               () => context.push('/profile/addresses')),
                           _Row(Icons.favorite_border, t('Mes favoris'),
@@ -257,11 +259,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.fromLTRB(4, S.lg, 4, S.sm),
             child: Text(title, style: ts(12, weight: F.semi, color: C.grey)),
           ),
-          Container(
-            decoration: BoxDecoration(
-              color: C.bg,
+          // Material et non Container : les ListTile peignent leur fond et leur
+          // encre sur le Material le plus proche, qu'un simple fond masquerait.
+          Material(
+            color: C.bg,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(R.md),
-              border: Border.all(color: C.line),
+              side: const BorderSide(color: C.line),
             ),
             child: Column(
               children: [

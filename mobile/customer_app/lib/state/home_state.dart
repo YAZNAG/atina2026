@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/catalog_service.dart';
+import '../services/rewards_service.dart';
 import '../services/profile_service.dart';
 
 /// Contenu de l'accueil. Chaque bloc arrive indépendamment : l'écran s'affiche dès
@@ -21,6 +22,7 @@ class HomeData {
     this.flashProducts = const [],
     this.flashEndsAt,
     this.packs = const [],
+    this.games = const [],
     this.ready = false,
   });
 
@@ -35,6 +37,9 @@ class HomeData {
   final List<Map<String, dynamic>> flashProducts;
   final String? flashEndsAt;
   final List<Map<String, dynamic>> packs;
+
+  /// Jeux actifs du point de distribution (carte « Roue de la chance »).
+  final List<Map<String, dynamic>> games;
 
   /// Vrai dès que l'écran a de quoi s'afficher.
   final bool ready;
@@ -51,6 +56,7 @@ class HomeData {
     List<Map<String, dynamic>>? flashProducts,
     String? flashEndsAt,
     List<Map<String, dynamic>>? packs,
+    List<Map<String, dynamic>>? games,
     bool? ready,
   }) =>
       HomeData(
@@ -65,6 +71,7 @@ class HomeData {
         flashProducts: flashProducts ?? this.flashProducts,
         flashEndsAt: flashEndsAt ?? this.flashEndsAt,
         packs: packs ?? this.packs,
+        games: games ?? this.games,
         ready: ready ?? this.ready,
       );
 }
@@ -107,6 +114,7 @@ class HomeNotifier extends StateNotifier<HomeData> {
       _fill(CatalogService.topRated(), (v) => state = state.copyWith(topRated: v)),
       _fill(CatalogService.recommended(), (v) => state = state.copyWith(suggestions: v)),
       _fill(PromotionsService.packs(), (v) => state = state.copyWith(packs: v)),
+      _fill(GamesService.list(), (v) => state = state.copyWith(games: v)),
       _fill(PromotionsService.home(), (data) {
         final ending = data['endingSoon'];
         state = state.copyWith(

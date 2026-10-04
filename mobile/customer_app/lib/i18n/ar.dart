@@ -696,4 +696,15 @@ const Map<String, String> arStrings = {
   'Voulez-vous vous déconnecter ?': 'هل تريد تسجيل الخروج؟',
   'tour disponible': 'دورة متاحة',
   'tours disponibles': 'دورات متاحة',
+
+  // ── Écrans alignés sur la maquette Figma (accueil, localisation)
+  'Ma localisation': 'موقعي',
+  'Adresse actuelle': 'العنوان الحالي',
+  'Utilisez votre position pour trouver le magasin le plus proche.': 'استعمل موقعك للعثور على أقرب متجر.',
+  'Gérer': 'إدارة',
+  'Roue de la chance': 'عجلة الحظ',
+  'Parrainer un proche': 'ادعُ صديقًا',
+  'Partagez votre code et gagnez des points à sa première commande.': 'شارك رمزك واربح نقاطًا عند أول طلب له.',
+  'Aucun créneau disponible pour le moment. Réessayez plus tard.': 'لا يوجد موعد متاح حاليًا. حاول لاحقًا.',
+  'Un article de votre panier est indisponible dans les magasins qui livrent chez vous.': 'أحد منتجات سلتك غير متوفر في المتاجر التي توصل إلى عنوانك.',
 };

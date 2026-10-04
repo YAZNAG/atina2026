@@ -25,6 +25,7 @@ import 'screens/order/order_tracking_screen.dart';
 import 'screens/order/orders_screen.dart';
 import 'screens/order/payment_screen.dart';
 import 'screens/profile/addresses_screen.dart';
+import 'screens/profile/location_screen.dart';
 import 'screens/profile/settings_screens.dart';
 import 'screens/rewards/coupons_screen.dart';
 import 'screens/rewards/exchange_screen.dart';
@@ -153,6 +154,7 @@ final List<RouteBase> appRoutes = [
 
     // ── Profil ──────────────────────────────────────────────────────────────
     GoRoute(path: '/profile/addresses', builder: (_, __) => const AddressesScreen()),
+    GoRoute(path: '/profile/location', builder: (_, __) => const LocationScreen()),
     GoRoute(path: '/profile/edit', builder: (_, __) => const EditProfileScreen()),
     GoRoute(
       path: '/profile/notifications',

@@ -135,6 +135,7 @@ const ecrans = [
 
   // Profil
   Ecran('/profile/addresses', 'Mes adresses'),
+  Ecran('/profile/location', 'Ma localisation'),
   Ecran('/profile/edit', 'Nom complet'),
   Ecran('/profile/notifications', 'Notifications'),
   Ecran('/profile/language', 'Langue'),
