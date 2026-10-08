@@ -1,0 +1,687 @@
+// Gestion des déplacements professionnels — Chambre d'Artisanat Souss Massa
+// Montants en dirhams (MAD), Decimal(12,2).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Référentiels ─────────────────────────
+
+enum Role {
+  AGENT
+  VALIDATEUR
+  FINANCIER
+  ADMIN
+}
+
+model Service {
+  id            Int       @id @default(autoincrement())
+  code          String    @unique
+  nom           String
+  parentId      Int?
+  parent        Service?  @relation("ServiceHierarchie", fields: [parentId], references: [id])
+  enfants       Service[] @relation("ServiceHierarchie")
+  responsableId Int?
+  responsable   User?     @relation("ResponsableService", fields: [responsableId], references: [id])
+  actif         Boolean   @default(true)
+  agents        User[]    @relation("AgentsService")
+  missions      Mission[]
+  budgets       Budget[]
+  circuits      CircuitValidation[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model CategorieAgent {
+  id       Int        @id @default(autoincrement())
+  code     String     @unique
+  libelle  String
+  ordre    Int        @default(0)
+  agents   User[]
+  fonctions Fonction[]
+  baremes  Bareme[]
+  plafonds PlafondFrais[]
+}
+
+model Fonction {
+  id          Int             @id @default(autoincrement())
+  libelle     String          @unique
+  categorieId Int?
+  categorie   CategorieAgent? @relation(fields: [categorieId], references: [id])
+  actif       Boolean         @default(true)
+  agents      User[]
+}
+
+model Zone {
+  id           Int           @id @default(autoincrement())
+  code         String        @unique
+  libelle      String
+  international Boolean      @default(false)
+  destinations Destination[]
+  baremes      Bareme[]
+}
+
+model Destination {
+  id         Int       @id @default(autoincrement())
+  ville      String
+  pays       String    @default("Maroc")
+  zoneId     Int
+  zone       Zone      @relation(fields: [zoneId], references: [id])
+  distanceKm Int?
+  actif      Boolean   @default(true)
+  missions   Mission[]
+
+  @@unique([ville, pays])
+}
+
+/// Barème des indemnités : un taux par zone et catégorie d'agent, sur une période de validité.
+model Bareme {
+  id                 Int            @id @default(autoincrement())
+  zoneId             Int
+  zone               Zone           @relation(fields: [zoneId], references: [id])
+  categorieId        Int
+  categorie          CategorieAgent @relation(fields: [categorieId], references: [id])
+  tauxJournalier     Decimal        @db.Decimal(12, 2)
+  tauxRepas          Decimal        @default(0) @db.Decimal(12, 2)
+  plafondNuitee      Decimal        @default(0) @db.Decimal(12, 2)
+  tauxKilometrique   Decimal        @default(0) @db.Decimal(12, 2)
+  dateDebut          DateTime       @db.Date
+  dateFin            DateTime?      @db.Date
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([zoneId, categorieId])
+}
+
+enum CategorieFrais {
+  TRANSPORT
+  HEBERGEMENT
+  REPAS
+  CARBURANT
+  PEAGE_PARKING
+  TAXI
+  DIVERS
+}
+
+enum UnitePlafond {
+  PAR_DEPENSE
+  PAR_JOUR
+}
+
+/// Plafond de remboursement par catégorie de frais (et éventuellement par catégorie d'agent).
+model PlafondFrais {
+  id                Int             @id @default(autoincrement())
+  categorieFrais    CategorieFrais
+  categorieAgentId  Int?
+  categorieAgent    CategorieAgent? @relation(fields: [categorieAgentId], references: [id])
+  montant           Decimal         @db.Decimal(12, 2)
+  unite             UnitePlafond    @default(PAR_DEPENSE)
+  justificatifObligatoire Boolean   @default(true)
+
+  @@unique([categorieFrais, categorieAgentId])
+}
+
+model Projet {
+  id       Int       @id @default(autoincrement())
+  code     String    @unique
+  libelle  String
+  actif    Boolean   @default(true)
+  missions Mission[]
+  budgets  Budget[]
+}
+
+// ───────────────────────── Utilisateurs ─────────────────────────
+
+model User {
+  id              Int             @id @default(autoincrement())
+  matricule       String          @unique
+  nom             String
+  prenom          String
+  email           String          @unique
+  passwordHash    String
+  role            Role            @default(AGENT)
+  /// Directeur ou validateur dont le périmètre couvre tous les services.
+  perimetreGlobal Boolean         @default(false)
+  telephone       String?
+  /// Données sensibles chiffrées au repos (AES-256-GCM).
+  cinChiffre      String?
+  ribChiffre      String?
+  serviceId       Int?
+  service         Service?        @relation("AgentsService", fields: [serviceId], references: [id])
+  fonctionId      Int?
+  fonction        Fonction?       @relation(fields: [fonctionId], references: [id])
+  categorieId     Int?
+  categorie       CategorieAgent? @relation(fields: [categorieId], references: [id])
+  actif           Boolean         @default(true)
+  tentativesEchouees Int          @default(0)
+  verrouilleJusqua DateTime?
+  derniereConnexion DateTime?
+  doitChangerMdp  Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  servicesDiriges   Service[]           @relation("ResponsableService")
+  missionsDemandees Mission[]           @relation("DemandeurMission")
+  participations    MissionParticipant[]
+  notesFrais        NoteFrais[]         @relation("AgentNoteFrais")
+  avances           Avance[]            @relation("AgentAvance")
+  validations       Validation[]
+  notifications     Notification[]
+  messages          MessageMission[]
+  connexions        ConnexionLog[]
+  audits            AuditLog[]
+  etapesAssignees   EtapeCircuit[]
+  documents         Document[]
+  carnetsBord       CarnetBord[]
+}
+
+model ConnexionLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  email     String
+  succes    Boolean
+  motif     String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ───────────────────────── Circuits de validation ─────────────────────────
+
+enum TypeObjet {
+  MISSION
+  NOTE_FRAIS
+}
+
+enum TypeEtape {
+  /// Le responsable du service du demandeur (ou d'un service parent).
+  RESPONSABLE_SERVICE
+  /// Un utilisateur nommément désigné (ex. le directeur).
+  UTILISATEUR
+  /// Tout utilisateur actif ayant le rôle indiqué (ex. FINANCIER).
+  ROLE
+}
+
+model CircuitValidation {
+  id        Int            @id @default(autoincrement())
+  nom       String
+  type      TypeObjet
+  /// null = circuit par défaut pour tous les services.
+  serviceId Int?
+  service   Service?       @relation(fields: [serviceId], references: [id])
+  actif     Boolean        @default(true)
+  etapes    EtapeCircuit[]
+  missions  Mission[]
+  notes     NoteFrais[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model EtapeCircuit {
+  id            Int               @id @default(autoincrement())
+  circuitId     Int
+  circuit       CircuitValidation @relation(fields: [circuitId], references: [id], onDelete: Cascade)
+  ordre         Int
+  libelle       String
+  typeEtape     TypeEtape
+  role          Role?
+  utilisateurId Int?
+  utilisateur   User?             @relation(fields: [utilisateurId], references: [id])
+  /// Au-delà de ce montant seulement, l'étape s'applique (null = toujours).
+  seuilMontant  Decimal?          @db.Decimal(12, 2)
+
+  @@unique([circuitId, ordre])
+}
+
+enum Decision {
+  APPROUVE
+  REFUSE
+  SAUTE
+}
+
+model Validation {
+  id           Int        @id @default(autoincrement())
+  objetType    TypeObjet
+  missionId    Int?
+  mission      Mission?   @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  noteFraisId  Int?
+  noteFrais    NoteFrais? @relation(fields: [noteFraisId], references: [id], onDelete: Cascade)
+  etapeOrdre   Int
+  etapeLibelle String
+  validateurId Int?
+  validateur   User?      @relation(fields: [validateurId], references: [id])
+  decision     Decision
+  commentaire  String?
+  createdAt    DateTime   @default(now())
+}
+
+// ───────────────────────── Missions ─────────────────────────
+
+enum StatutMission {
+  BROUILLON
+  EN_ATTENTE
+  APPROUVE
+  REFUSE
+  EN_COURS
+  CLOTURE
+  ANNULE
+}
+
+enum MoyenTransport {
+  VOITURE_SERVICE
+  VOITURE_PERSONNELLE
+  TRAIN
+  AVION
+  AUTOCAR
+  TAXI
+  AUTRE
+}
+
+model Mission {
+  id                 Int                  @id @default(autoincrement())
+  numero             String?              @unique
+  objet              String
+  description        String?
+  destinationId      Int
+  destination        Destination          @relation(fields: [destinationId], references: [id])
+  lieuPrecis         String?
+  dateDepart         DateTime
+  dateRetour         DateTime
+  moyenTransport     MoyenTransport
+  vehiculeId         Int?
+  vehicule           Vehicule?            @relation(fields: [vehiculeId], references: [id])
+  demandeurId        Int
+  demandeur          User                 @relation("DemandeurMission", fields: [demandeurId], references: [id])
+  serviceId          Int
+  service            Service              @relation(fields: [serviceId], references: [id])
+  projetId           Int?
+  projet             Projet?              @relation(fields: [projetId], references: [id])
+  budgetId           Int?
+  budget             Budget?              @relation(fields: [budgetId], references: [id])
+  circuitId          Int?
+  circuit            CircuitValidation?   @relation(fields: [circuitId], references: [id])
+  etapeCourante      Int?
+  statut             StatutMission        @default(BROUILLON)
+  nbRepasFournis     Int                  @default(0)
+  hebergementPrisEnCharge Boolean         @default(false)
+  fraisTransportEstimes Decimal           @default(0) @db.Decimal(12, 2)
+  autresFraisEstimes Decimal              @default(0) @db.Decimal(12, 2)
+  coutEstime         Decimal              @default(0) @db.Decimal(12, 2)
+  motifRefus         String?
+  soumisLe           DateTime?
+  approuveLe         DateTime?
+  clotureLe          DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  participants MissionParticipant[]
+  reservations Reservation[]
+  validations  Validation[]
+  notesFrais   NoteFrais[]
+  avances      Avance[]
+  messages     MessageMission[]
+  documents    Document[]
+  carnetsBord  CarnetBord[]
+  pleins       PleinCarburant[]
+
+  @@index([statut])
+  @@index([dateDepart, dateRetour])
+}
+
+model MissionParticipant {
+  id          Int     @id @default(autoincrement())
+  missionId   Int
+  mission     Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User    @relation(fields: [userId], references: [id])
+  chefMission Boolean @default(false)
+
+  @@unique([missionId, userId])
+}
+
+enum TypeReservation {
+  BILLET_TRAIN
+  BILLET_AVION
+  BILLET_AUTOCAR
+  LOCATION_VOITURE
+  HEBERGEMENT
+  AUTRE
+}
+
+enum PayePar {
+  CHAMBRE
+  AGENT
+}
+
+/// Billets, réservations et nuitées liés à une mission.
+model Reservation {
+  id            Int             @id @default(autoincrement())
+  missionId     Int
+  mission       Mission         @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  type          TypeReservation
+  prestataire   String?
+  reference     String?
+  description   String?
+  dateDebut     DateTime
+  dateFin       DateTime?
+  nbNuits       Int             @default(0)
+  montant       Decimal         @db.Decimal(12, 2)
+  payePar       PayePar         @default(CHAMBRE)
+  beneficiaireId Int?
+  documentId    Int?            @unique
+  document      Document?       @relation("DocumentReservation", fields: [documentId], references: [id])
+  createdAt     DateTime        @default(now())
+}
+
+model MessageMission {
+  id        Int      @id @default(autoincrement())
+  missionId Int
+  mission   Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  auteurId  Int
+  auteur    User     @relation(fields: [auteurId], references: [id])
+  contenu   String
+  createdAt DateTime @default(now())
+}
+
+// ───────────────────────── Notes de frais ─────────────────────────
+
+enum StatutNoteFrais {
+  BROUILLON
+  SOUMISE
+  VALIDEE
+  REJETEE
+  REMBOURSEE
+}
+
+model NoteFrais {
+  id                Int                @id @default(autoincrement())
+  numero            String?            @unique
+  missionId         Int
+  mission           Mission            @relation(fields: [missionId], references: [id])
+  agentId           Int
+  agent             User               @relation("AgentNoteFrais", fields: [agentId], references: [id])
+  statut            StatutNoteFrais    @default(BROUILLON)
+  circuitId         Int?
+  circuit           CircuitValidation? @relation(fields: [circuitId], references: [id])
+  etapeCourante     Int?
+  joursIndemnises   Decimal            @default(0) @db.Decimal(6, 1)
+  tauxJournalier    Decimal            @default(0) @db.Decimal(12, 2)
+  totalIndemnites   Decimal            @default(0) @db.Decimal(12, 2)
+  totalDepenses     Decimal            @default(0) @db.Decimal(12, 2)
+  totalRetenu       Decimal            @default(0) @db.Decimal(12, 2)
+  avanceDeduite     Decimal            @default(0) @db.Decimal(12, 2)
+  montantARembourser Decimal           @default(0) @db.Decimal(12, 2)
+  motifRejet        String?
+  soumiseLe         DateTime?
+  valideeLe         DateTime?
+  rembourseeLe      DateTime?
+  referencePaiement String?
+  modePaiement      String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  lignes      LigneFrais[]
+  validations Validation[]
+  avances     Avance[]
+  documents   Document[]
+
+  @@unique([missionId, agentId])
+  @@index([statut])
+}
+
+enum StatutControle {
+  EN_ATTENTE
+  CONFORME
+  NON_CONFORME
+}
+
+model LigneFrais {
+  id                 Int            @id @default(autoincrement())
+  noteFraisId        Int
+  noteFrais          NoteFrais      @relation(fields: [noteFraisId], references: [id], onDelete: Cascade)
+  date               DateTime       @db.Date
+  categorie          CategorieFrais
+  description        String?
+  montant            Decimal        @db.Decimal(12, 2)
+  montantRetenu      Decimal        @default(0) @db.Decimal(12, 2)
+  depassementPlafond Boolean        @default(false)
+  statutControle     StatutControle @default(EN_ATTENTE)
+  commentaireControle String?
+  documentId         Int?           @unique
+  document           Document?      @relation("DocumentLigne", fields: [documentId], references: [id])
+  createdAt          DateTime       @default(now())
+}
+
+// ───────────────────────── Avances ─────────────────────────
+
+enum StatutAvance {
+  DEMANDEE
+  VERSEE
+  REGULARISEE
+  ANNULEE
+}
+
+model Avance {
+  id                  Int          @id @default(autoincrement())
+  numero              String?      @unique
+  missionId           Int
+  mission             Mission      @relation(fields: [missionId], references: [id])
+  agentId             Int
+  agent               User         @relation("AgentAvance", fields: [agentId], references: [id])
+  montant             Decimal      @db.Decimal(12, 2)
+  statut              StatutAvance @default(DEMANDEE)
+  modeVersement       String?
+  referenceVersement  String?
+  verseeLe            DateTime?
+  noteFraisId         Int?
+  noteFrais           NoteFrais?   @relation(fields: [noteFraisId], references: [id])
+  /// Solde après régularisation : > 0 la Chambre doit à l'agent, < 0 l'agent doit reverser.
+  soldeRegularisation Decimal?     @db.Decimal(12, 2)
+  regulariseeLe       DateTime?
+  commentaire         String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+}
+
+// ───────────────────────── Budget ─────────────────────────
+
+enum TypeBudget {
+  GLOBAL
+  SERVICE
+  PROJET
+}
+
+model Budget {
+  id             Int        @id @default(autoincrement())
+  annee          Int
+  libelle        String
+  type           TypeBudget
+  serviceId      Int?
+  service        Service?   @relation(fields: [serviceId], references: [id])
+  projetId       Int?
+  projet         Projet?    @relation(fields: [projetId], references: [id])
+  montantInitial Decimal    @db.Decimal(14, 2)
+  montantAjuste  Decimal?   @db.Decimal(14, 2)
+  /// Pourcentage de consommation déclenchant une alerte.
+  seuilAlerte    Int        @default(80)
+  alerteEnvoyee  Int        @default(0)
+  missions       Mission[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([annee])
+}
+
+// ───────────────────────── Parc automobile ─────────────────────────
+
+enum StatutVehicule {
+  DISPONIBLE
+  EN_MISSION
+  EN_ENTRETIEN
+  HORS_SERVICE
+}
+
+model Vehicule {
+  id                 Int            @id @default(autoincrement())
+  immatriculation    String         @unique
+  marque             String
+  modele             String
+  carburant          String         @default("Diesel")
+  nbPlaces           Int            @default(5)
+  kilometrage        Int            @default(0)
+  statut             StatutVehicule @default(DISPONIBLE)
+  dateAssurance      DateTime?      @db.Date
+  dateVisiteTechnique DateTime?     @db.Date
+  missions           Mission[]
+  carnetsBord        CarnetBord[]
+  pleins             PleinCarburant[]
+  entretiens         Entretien[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+model CarnetBord {
+  id           Int      @id @default(autoincrement())
+  vehiculeId   Int
+  vehicule     Vehicule @relation(fields: [vehiculeId], references: [id], onDelete: Cascade)
+  missionId    Int?
+  mission      Mission? @relation(fields: [missionId], references: [id])
+  conducteurId Int
+  conducteur   User     @relation(fields: [conducteurId], references: [id])
+  date         DateTime @db.Date
+  kmDepart     Int
+  kmArrivee    Int
+  trajet       String
+  observations String?
+  createdAt    DateTime @default(now())
+}
+
+model PleinCarburant {
+  id          Int      @id @default(autoincrement())
+  vehiculeId  Int
+  vehicule    Vehicule @relation(fields: [vehiculeId], references: [id], onDelete: Cascade)
+  missionId   Int?
+  mission     Mission? @relation(fields: [missionId], references: [id])
+  date        DateTime @db.Date
+  litres      Decimal  @db.Decimal(8, 2)
+  montant     Decimal  @db.Decimal(12, 2)
+  kilometrage Int?
+  station     String?
+  createdAt   DateTime @default(now())
+}
+
+model Entretien {
+  id                    Int       @id @default(autoincrement())
+  vehiculeId            Int
+  vehicule              Vehicule  @relation(fields: [vehiculeId], references: [id], onDelete: Cascade)
+  date                  DateTime  @db.Date
+  type                  String
+  description           String?
+  montant               Decimal   @db.Decimal(12, 2)
+  kilometrage           Int?
+  garage                String?
+  prochainEntretienKm   Int?
+  prochainEntretienDate DateTime? @db.Date
+  createdAt             DateTime  @default(now())
+}
+
+// ───────────────────────── Documents, notifications, audit ─────────────────────────
+
+model Document {
+  id            Int          @id @default(autoincrement())
+  nomOriginal   String
+  mimeType      String
+  taille        Int
+  cheminStockage String      @unique
+  sha256        String
+  chiffre       Boolean      @default(true)
+  categorie     String       @default("JUSTIFICATIF")
+  uploadedById  Int
+  uploadedBy    User         @relation(fields: [uploadedById], references: [id])
+  missionId     Int?
+  mission       Mission?     @relation(fields: [missionId], references: [id])
+  noteFraisId   Int?
+  noteFrais     NoteFrais?   @relation(fields: [noteFraisId], references: [id])
+  conserverJusqua DateTime   @db.Date
+  ligne         LigneFrais?  @relation("DocumentLigne")
+  reservation   Reservation? @relation("DocumentReservation")
+  createdAt     DateTime     @default(now())
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  titre     String
+  message   String
+  lien      String?
+  lu        Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, lu])
+}
+
+model EmailLog {
+  id           Int      @id @default(autoincrement())
+  destinataire String
+  sujet        String
+  statut       String
+  erreur       String?
+  createdAt    DateTime @default(now())
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entite    String
+  entiteId  Int?
+  avant     Json?
+  apres     Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([entite, entiteId])
+  @@index([createdAt])
+}
+
+model Parametre {
+  cle       String   @id
+  valeur    Json
+  updatedAt DateTime @updatedAt
+}
+
+model ModeleDocument {
+  id           Int      @id @default(autoincrement())
+  code         String   @unique
+  titre        String
+  texteIntro   String?
+  textePied    String?
+  /// Liste des signataires : [{ "libelle": "Le Directeur" }, ...]
+  signataires  Json     @default("[]")
+  afficherEntete Boolean @default(true)
+  updatedAt    DateTime @updatedAt
+}
+
+model Compteur {
+  cle    String @id
+  valeur Int    @default(0)
+}
+
+model Sauvegarde {
+  id        Int      @id @default(autoincrement())
+  fichier   String
+  taille    Int
+  statut    String
+  erreur    String?
+  createdAt DateTime @default(now())
+}
