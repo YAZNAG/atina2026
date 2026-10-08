@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 const fs = require('fs');
 const path = require('path');
 const { prisma, en, EMAILS, utilisateur, dans, PNG } = require('./helpers');
@@ -66,8 +66,8 @@ describe('ordre de mission : circuit complet', () => {
     expect(r.body.data.numero).toMatch(new RegExp(`^OM-${new Date(dans(20)).getFullYear()}-\\d{4}$`));
     const notif = await prisma.notification.findFirst({ where: { userId: chefSpc.id }, orderBy: { id: 'desc' } });
     expect(notif.titre).toMatch(/à valider/);
-    const mail = await prisma.emailLog.findFirst({ where: { destinataire: EMAILS.chefSpc } });
-    expect(mail).toBeTruthy();
+    // L'e-mail part en arrière-plan pour ne pas ralentir la requête.
+    await vi.waitFor(async () => expect(await prisma.emailLog.findFirst({ where: { destinataire: EMAILS.chefSpc } })).toBeTruthy(), { timeout: 5000 });
   });
 
   it('seul le validateur de l’étape en cours peut statuer', async () => {
@@ -349,5 +349,19 @@ describe('tableau de bord, exports et tâches planifiées', () => {
     expect(r.status).toBe(200);
     expect(r.body.data.length).toBeGreaterThan(3);
     expect(r.body.data.every((x) => x.entite === 'NoteFrais')).toBe(true);
+  });
+});
+
+describe('confidentialité des brouillons', () => {
+  it('un brouillon n’est visible que du demandeur et des participants', async () => {
+    const dest = await prisma.destination.findFirst({ where: { ville: 'Tiznit' } });
+    const a = await en(EMAILS.agent1);
+    const m = (await a.post('/api/missions').send({ objet: 'Brouillon privé', destinationId: dest.id, dateDepart: dans(90, 8), dateRetour: dans(90, 17), moyenTransport: 'TAXI' })).body.data;
+    for (const qui of ['finance', 'directeur', 'chefSpc', 'admin']) {
+      expect((await (await en(EMAILS[qui])).get(`/api/missions/${m.id}`)).status).toBe(403);
+      const liste = await (await en(EMAILS[qui])).get('/api/missions?limit=200');
+      expect(liste.body.data.map((x) => x.id)).not.toContain(m.id);
+    }
+    expect((await a.get(`/api/missions/${m.id}`)).status).toBe(200);
   });
 });

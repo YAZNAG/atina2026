@@ -38,6 +38,7 @@ ATINA-2/
 │       └── test/         # 97 tests : chaque écran en FR et en AR
 ├── mobile_rn/
 │   └── agent_app/        # React Native + Expo — application agent
+├── deplacements/         # Gestion des déplacements — Chambre d'Artisanat Souss Massa (voir deplacements/README.md)
 ├── docs/                 # crédits des photos du catalogue
 └── README.md
 ```

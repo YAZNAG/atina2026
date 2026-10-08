@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary { @apply btn bg-brand-700 text-white hover:bg-brand-800; }
+  .btn-secondary { @apply btn border border-stone-300 bg-white text-stone-700 hover:bg-stone-50; }
+  .btn-success { @apply btn bg-emerald-600 text-white hover:bg-emerald-700; }
+  .btn-danger { @apply btn bg-red-600 text-white hover:bg-red-700; }
+  .btn-ghost { @apply btn text-stone-600 hover:bg-stone-100; }
+  .btn-sm { @apply px-2.5 py-1.5 text-xs; }
+  .input {
+    @apply block w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-stone-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-stone-100;
+  }
+  .label { @apply mb-1 block text-sm font-medium text-stone-700; }
+  .card { @apply rounded-xl border border-stone-200 bg-white shadow-sm; }
+  .table-base { @apply min-w-full divide-y divide-stone-200 text-sm; }
+  .table-base th { @apply whitespace-nowrap bg-stone-50 px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-stone-500; }
+  .table-base td { @apply px-3 py-2.5 align-top; }
+  .table-base tbody tr { @apply hover:bg-stone-50; }
+}

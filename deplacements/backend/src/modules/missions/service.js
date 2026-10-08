@@ -39,16 +39,22 @@ const INCLUDE_DETAIL = {
   documents: { select: { id: true, nomOriginal: true, mimeType: true, taille: true, categorie: true, createdAt: true } },
 };
 
-/** Filtre Prisma des missions visibles par l'utilisateur. */
+/**
+ * Filtre Prisma des missions visibles par l'utilisateur. Un brouillon reste privé
+ * (demandeur et participants) tant qu'il n'est pas soumis.
+ */
 async function filtreVisibilite(user) {
-  if (user.permissions.includes('mission:lire_tout')) return {};
-  const ou = [{ demandeurId: user.id }, { participants: { some: { userId: user.id } } }, { validations: { some: { validateurId: user.id } } }];
-  if (user.permissions.includes('mission:lire_perimetre')) {
-    if (user.perimetreGlobal) return {};
-    const services = await perimetreServices(user.id);
-    if (services.length) ou.push({ serviceId: { in: services } });
+  const siennes = [{ demandeurId: user.id }, { participants: { some: { userId: user.id } } }];
+  const soumises = { statut: { not: 'BROUILLON' } };
+  if (user.permissions.includes('mission:lire_tout') || (user.permissions.includes('mission:lire_perimetre') && user.perimetreGlobal)) {
+    return { OR: [...siennes, soumises] };
   }
-  return { OR: ou };
+  const autres = [{ validations: { some: { validateurId: user.id } } }];
+  if (user.permissions.includes('mission:lire_perimetre')) {
+    const services = await perimetreServices(user.id);
+    if (services.length) autres.push({ serviceId: { in: services } });
+  }
+  return { OR: [...siennes, { AND: [soumises, { OR: autres }] }] };
 }
 
 /** Vérifie que l'utilisateur peut consulter la mission (y compris en tant que validateur de l'étape en cours). */

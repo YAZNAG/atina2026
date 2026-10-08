@@ -27,15 +27,18 @@ const INCLUDE_DETAIL = {
   avances: true,
 };
 
+/** Notes visibles : les siennes, puis — une fois soumises — celles du périmètre de l'utilisateur. */
 async function filtreVisibilite(user) {
-  if (user.permissions.includes('mission:lire_tout')) return {};
-  const ou = [{ agentId: user.id }, { validations: { some: { validateurId: user.id } } }];
-  if (user.permissions.includes('mission:lire_perimetre')) {
-    if (user.perimetreGlobal) return {};
-    const services = await perimetreServices(user.id);
-    if (services.length) ou.push({ mission: { serviceId: { in: services } } });
+  const soumises = { statut: { not: 'BROUILLON' } };
+  if (user.permissions.includes('mission:lire_tout') || (user.permissions.includes('mission:lire_perimetre') && user.perimetreGlobal)) {
+    return { OR: [{ agentId: user.id }, soumises] };
   }
-  return { OR: ou };
+  const autres = [{ validations: { some: { validateurId: user.id } } }];
+  if (user.permissions.includes('mission:lire_perimetre')) {
+    const services = await perimetreServices(user.id);
+    if (services.length) autres.push({ mission: { serviceId: { in: services } } });
+  }
+  return { OR: [{ agentId: user.id }, { AND: [soumises, { OR: autres }] }] };
 }
 
 async function charger(id, include = INCLUDE_DETAIL) {

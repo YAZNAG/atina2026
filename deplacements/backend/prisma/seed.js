@@ -289,6 +289,12 @@ async function demo({ dest }, { services, u }) {
       rembourseeLe: jour(-20),
       modePaiement: 'VIREMENT',
       referencePaiement: 'VIR-2026-0412',
+      validations: {
+        create: [
+          { objetType: 'NOTE_FRAIS', etapeOrdre: 1, etapeLibelle: 'Visa du chef de service', validateurId: u.chefSpc.id, decision: 'APPROUVE', createdAt: jour(-24) },
+          { objetType: 'NOTE_FRAIS', etapeOrdre: 2, etapeLibelle: 'Contrôle du service financier', validateurId: u.finance.id, decision: 'APPROUVE', createdAt: jour(-22) },
+        ],
+      },
       lignes: {
         create: [
           { date: jour(-30), categorie: 'TRANSPORT', description: 'Train Marrakech–Casablanca A/R + car Agadir–Marrakech', montant: 860, montantRetenu: 860, statutControle: 'CONFORME' },
