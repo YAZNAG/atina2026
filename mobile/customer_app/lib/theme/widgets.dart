@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -584,6 +585,65 @@ class SubFamilyChip extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Compte à rebours d'une section (vente flash) : pastille rouge « hh:mm:ss »
+/// posée à côté du titre, comme sur la maquette.
+class SectionCountdown extends StatefulWidget {
+  const SectionCountdown({super.key, required this.endsAt});
+
+  final String endsAt;
+
+  @override
+  State<SectionCountdown> createState() => _SectionCountdownState();
+}
+
+class _SectionCountdownState extends State<SectionCountdown> {
+  Timer? _timer;
+  String? _reste;
+
+  @override
+  void initState() {
+    super.initState();
+    _reste = _restant();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final valeur = _restant();
+      if (valeur != _reste && mounted) setState(() => _reste = valeur);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String? _restant() {
+    final fin = DateTime.tryParse(widget.endsAt);
+    if (fin == null) return null;
+    final secondes = fin.difference(DateTime.now()).inSeconds;
+    if (secondes <= 0) return null;
+    String deux(int n) => n.toString().padLeft(2, '0');
+    return '${deux(secondes ~/ 3600)}:${deux((secondes % 3600) ~/ 60)}:${deux(secondes % 60)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reste = _reste;
+    if (reste == null) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: C.red,
+        borderRadius: BorderRadius.circular(R.pill),
+      ),
+      child: Text(
+        reste,
+        style: ts(11.5, weight: F.bold, color: Colors.white)
+            .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
       ),
     );
   }

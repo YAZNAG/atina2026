@@ -47,6 +47,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
             ),
+            // ── Blocs de la maquette, dans son ordre ────────────────────────
             if (home.flashProducts.isNotEmpty)
               _Carousel(
                 title: t('Offres à durée limitée'),
@@ -55,6 +56,12 @@ class HomeScreen extends ConsumerWidget {
                 endsAt: home.flashEndsAt,
                 onSeeAll: () => context.push('/main/offers'),
               ),
+            SliverToBoxAdapter(child: _WheelCard(games: home.games)),
+            if (home.packs.isNotEmpty)
+              SliverToBoxAdapter(child: _Packs(packs: home.packs)),
+            SliverToBoxAdapter(child: _ReferralCard(code: referral)),
+
+            // ── Sections propres à l'application ────────────────────────────
             if (home.categories.isNotEmpty)
               SliverToBoxAdapter(
                 child: _Categories(
@@ -62,9 +69,6 @@ class HomeScreen extends ConsumerWidget {
                   onSeeAll: () => context.push('/main/categories'),
                 ),
               ),
-            SliverToBoxAdapter(child: _WheelCard(games: home.games)),
-            if (home.packs.isNotEmpty)
-              SliverToBoxAdapter(child: _Packs(packs: home.packs)),
             if (home.bestDeals.isNotEmpty)
               _Carousel(
                 title: t('Meilleures offres'),
@@ -94,7 +98,6 @@ class HomeScreen extends ConsumerWidget {
                 onSeeAll: () =>
                     context.push('/main/list/suggestions?title=Suggestions pour vous'),
               ),
-            SliverToBoxAdapter(child: _ReferralCard(code: referral)),
             SliverToBoxAdapter(child: SectionTitle(title: t('Tous les produits'))),
             if (home.articles.isEmpty)
               SliverToBoxAdapter(
@@ -163,12 +166,13 @@ class _Header extends StatelessWidget {
                     ],
                   ),
                   Text(
+                    // La maquette affiche « ville, quartier » — court et lisible —
+                    // et non l'adresse complète.
                     address != null
-                        ? [
-                            address['street_name'],
-                            address['quartier'],
-                            address['city'],
-                          ].whereType<String>().where((s) => s.isNotEmpty).join(', ')
+                        ? [address['city'], address['quartier']]
+                            .whereType<String>()
+                            .where((s) => s.isNotEmpty)
+                            .join(', ')
                         : t('Ajouter une adresse'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -543,7 +547,32 @@ class _Carousel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionTitle(title: title, onSeeAll: onSeeAll),
+          if (endsAt == null)
+            SectionTitle(title: title, onSeeAll: onSeeAll)
+          else
+            // Vente flash : la maquette met le temps restant à côté du titre.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(S.lg, S.xl, S.lg, S.md),
+              child: Row(
+                children: [
+                  Text(title, style: ts(16, weight: F.bold)),
+                  const SizedBox(width: S.sm),
+                  SectionCountdown(endsAt: endsAt!),
+                  const Spacer(),
+                  if (onSeeAll != null)
+                    InkWell(
+                      onTap: onSeeAll,
+                      child: Row(
+                        children: [
+                          Text(t('Voir tout'),
+                              style: ts(13, weight: F.semi, color: C.red)),
+                          const Icon(Icons.chevron_right, size: 16, color: C.red),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
           SizedBox(
             height: 228,
             child: ListView.separated(

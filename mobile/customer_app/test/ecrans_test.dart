@@ -95,7 +95,8 @@ const ecrans = [
   Ecran('/auth/complete-profile', 'Complétez votre profil'),
 
   // Onglets
-  Ecran('/main/home', 'Catégories'),
+  // Ancré sur un bloc de la maquette, visible sans défiler.
+  Ecran('/main/home', 'Roue de la chance'),
   Ecran('/main/products', 'Produits'),
   Ecran('/main/cart', 'Mon panier'),
   Ecran('/main/offers', 'Offres'),
