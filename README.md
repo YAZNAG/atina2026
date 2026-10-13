@@ -36,6 +36,7 @@ ATINA-2/
 │       │   ├── theme/    # charte Figma et composants
 │       │   └── widgets/
 │       └── test/         # 97 tests : chaque écran en FR et en AR
+│   └── tenders_app/      # Flutter — appels d'offres au Maroc (voir son README)
 ├── mobile_rn/
 │   └── agent_app/        # React Native + Expo — application agent
 ├── docs/                 # crédits des photos du catalogue

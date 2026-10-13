@@ -1,0 +1,45 @@
+name: mounaqasa
+description: "Appels d'offres publics et privés au Maroc."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Dates et montants au format français ou arabe marocain.
+  intl: ^0.20.2
+
+  # Enregistrés, téléchargements, préférences d'alertes et langue.
+  shared_preferences: ^2.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter_400Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter_500Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter_600SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter_700Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter_800ExtraBold.ttf
+          weight: 800
+
+    - family: NotoSansArabic
+      fonts:
+        - asset: assets/fonts/NotoSansArabic.ttf
