@@ -147,6 +147,15 @@ sans notifications. Les notifications sont aussi désactivées en mode exemples.
    fiches App Store / Play Store (les icônes des fiches sont dans `store/`).
    L'identifiant est `ma.safa9at.app`.
 
+## Télécharger et mettre en ligne
+
+- **APK** : chaque envoi sur la branche construit l'app sur GitHub
+  (`.github/workflows/safa9at.yml`) et la publie dans les **Releases** du dépôt :
+  `safa9at.apk` (vrais avis, serveur `https://safa9at.ma`) et `safa9at-demo.apk`
+  (avis d'exemple, sans serveur).
+- **safa9at.ma** : app web, API et APK sur le même domaine, installés en une commande.
+  Voir [`deploy/safa9at/`](../../deploy/safa9at/README.md).
+
 ## Lancer
 
 ```bash

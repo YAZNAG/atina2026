@@ -196,18 +196,12 @@ s'arrête avec le message « aucune consultation lue sur la première page : la 
 du portail a peut-être changé ». Il faut alors adapter `src/pmmp/parse.js` à partir
 d'une page enregistrée.
 
-### Production (même serveur que l'API ATINA)
+### Production
 
-```bash
-pm2 start npm --name tenders-api -- start
-pm2 save
-```
-
-Pour que l'app y accède, nginx doit transmettre un nom de domaine en HTTPS vers
-`localhost:4100`. Compilez ensuite l'app avec
-`--dart-define=API_URL=https://<ce domaine>`. Si vous préférez un cron à la collecte
-intégrée, laissez `COLLECT_AT` vide et planifiez
-`cd /chemin/tenders_api && npm run collect`.
+L'installation sur `safa9at.ma` (pm2, nginx, HTTPS, app web et APK) est décrite dans
+[`deploy/safa9at/`](../deploy/safa9at/README.md) et se fait en une commande. Si vous
+préférez un cron à la collecte intégrée, laissez `COLLECT_AT` vide et planifiez
+`cd /opt/safa9at/tenders_api && npm run collect`.
 
 ## API
 

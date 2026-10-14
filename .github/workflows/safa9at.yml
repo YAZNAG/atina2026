@@ -1,0 +1,104 @@
+# Construit l'app SAFA9AT (mobile/tenders_app) : APK Android et version web.
+# Le résultat est publié dans une « release » GitHub (onglet Releases du dépôt).
+#
+# Signature : sans les secrets SAFA9AT_KEYSTORE_*, l'APK est signé avec une clé de
+# débogage générée à chaque construction (installable, mais il faut désinstaller
+# l'ancienne version avant d'installer la nouvelle, et refusé par le Play Store).
+name: SAFA9AT
+
+on:
+  push:
+    branches: [main, claude/inspiring-mendel-zyz1z5]
+    paths:
+      - mobile/tenders_app/**
+      - .github/workflows/safa9at.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: safa9at-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Adresse publique du serveur tenders_api (l'API est servie sous /api).
+  API_URL: https://safa9at.ma
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile/tenders_app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.7
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+      - name: Clé de signature (si les secrets existent)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SAFA9AT_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.SAFA9AT_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SAFA9AT_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SAFA9AT_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "Pas de clé : APK signé avec la clé de débogage."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > android/safa9at.jks
+          cat > android/key.properties <<PROPS
+          storeFile=safa9at.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          PROPS
+
+      - name: APK (vrais avis, serveur safa9at.ma)
+        run: |
+          flutter build apk --release --dart-define=API_URL=$API_URL
+          mkdir -p ../../dist
+          cp build/app/outputs/flutter-apk/app-release.apk ../../dist/safa9at.apk
+
+      - name: APK (démonstration, sans serveur)
+        run: |
+          flutter build apk --release
+          cp build/app/outputs/flutter-apk/app-release.apk ../../dist/safa9at-demo.apk
+
+      - name: Version web (pour safa9at.ma)
+        run: |
+          flutter build web --release --no-web-resources-cdn --dart-define=API_URL=$API_URL
+          (cd build/web && zip -qr ../../../../dist/safa9at-web.zip .)
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: safa9at-build-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: SAFA9AT — construction ${{ github.run_number }}
+          prerelease: true
+          body: |
+            - **safa9at.apk** : l'app avec les vrais avis, servis par https://safa9at.ma
+              (le serveur doit être en ligne).
+            - **safa9at-demo.apk** : l'app avec les avis d'exemple, sans serveur.
+            - **safa9at-web.zip** : la version web, à déposer sur le serveur
+              (voir `deploy/safa9at/`).
+
+            Commit ${{ github.sha }}.
+          files: |
+            dist/safa9at.apk
+            dist/safa9at-demo.apk
+            dist/safa9at-web.zip
