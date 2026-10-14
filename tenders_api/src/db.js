@@ -52,6 +52,27 @@ CREATE TABLE IF NOT EXISTS runs (
   details_fetched  INTEGER DEFAULT 0,
   requests         INTEGER DEFAULT 0
 );
+
+-- Téléphones inscrits aux notifications, avec leurs préférences d'alertes.
+CREATE TABLE IF NOT EXISTS devices (
+  token             TEXT PRIMARY KEY,          -- jeton Firebase Cloud Messaging
+  platform          TEXT NOT NULL,
+  lang              TEXT NOT NULL,
+  prefs             TEXT NOT NULL,             -- JSON, même forme que AlertPrefs dans l'app
+  saved             TEXT NOT NULL DEFAULT '[]',-- JSON, avis enregistrés (rappels)
+  created_at        TEXT NOT NULL,
+  updated_at        TEXT NOT NULL,
+  last_notified_at  TEXT NOT NULL              -- avis vus après cette date = nouveaux
+);
+
+-- Ce qui a déjà été signalé : jamais deux fois la même alerte.
+CREATE TABLE IF NOT EXISTS notifications_sent (
+  token      TEXT NOT NULL,
+  tender_id  TEXT NOT NULL,
+  kind       TEXT NOT NULL,                    -- nouveau, rappel
+  sent_at    TEXT NOT NULL,
+  PRIMARY KEY (token, tender_id, kind)
+);
 `;
 
 /** Minuscules sans accents, pour chercher « equipement » dans « Équipement ». */
@@ -225,6 +246,72 @@ export class TenderStore {
 
   lastRun() {
     return this.db.prepare('SELECT * FROM runs ORDER BY id DESC LIMIT 1').get() ?? null;
+  }
+
+  /**
+   * Inscrit ou met à jour un téléphone. À la première inscription, seuls les avis vus
+   * ensuite comptent comme nouveaux : pas d'avalanche sur l'existant.
+   */
+  upsertDevice({ token, platform, lang, prefs, saved }, now) {
+    this.db.prepare(`
+      INSERT INTO devices (token, platform, lang, prefs, saved, created_at, updated_at, last_notified_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (token) DO UPDATE SET platform = excluded.platform, lang = excluded.lang,
+        prefs = excluded.prefs, saved = excluded.saved, updated_at = excluded.updated_at`).run(
+      token, platform, lang, JSON.stringify(prefs), JSON.stringify(saved), now, now, now,
+    );
+  }
+
+  deleteDevice(token) {
+    this.db.prepare('DELETE FROM notifications_sent WHERE token = ?').run(token);
+    return this.db.prepare('DELETE FROM devices WHERE token = ?').run(token).changes > 0;
+  }
+
+  devices() {
+    return this.db.prepare('SELECT * FROM devices ORDER BY created_at').all().map((d) => ({
+      token: d.token,
+      platform: d.platform,
+      lang: d.lang,
+      prefs: JSON.parse(d.prefs),
+      saved: JSON.parse(d.saved),
+      lastNotifiedAt: d.last_notified_at,
+    }));
+  }
+
+  markNotified(token, now) {
+    this.db.prepare('UPDATE devices SET last_notified_at = ? WHERE token = ?').run(now, token);
+  }
+
+  /** Avis encore ouverts apparus depuis `sinceIso`. */
+  newTendersSince(sinceIso, nowMs) {
+    return this.db
+      .prepare(`SELECT * FROM tenders WHERE first_seen_at > ? AND deadline_ts > ?
+        ORDER BY published_ts DESC, id`)
+      .all(sinceIso, nowMs)
+      .map(toApi);
+  }
+
+  tendersByIds(ids) {
+    if (!ids.length) return [];
+    const marks = ids.map(() => '?').join(',');
+    return this.db.prepare(`SELECT * FROM tenders WHERE id IN (${marks})`).all(...ids).map(toApi);
+  }
+
+  wasSent(token, tenderId, kind) {
+    return !!this.db
+      .prepare('SELECT 1 FROM notifications_sent WHERE token = ? AND tender_id = ? AND kind = ?')
+      .get(token, tenderId, kind);
+  }
+
+  recordSent(token, tenderIds, kind, now) {
+    const stmt = this.db.prepare(
+      'INSERT OR IGNORE INTO notifications_sent (token, tender_id, kind, sent_at) VALUES (?, ?, ?, ?)',
+    );
+    for (const id of tenderIds) stmt.run(token, id, kind, now);
+  }
+
+  deviceCount() {
+    return this.db.prepare('SELECT COUNT(*) AS n FROM devices').get().n;
   }
 
   lastSuccessfulRun() {

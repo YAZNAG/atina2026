@@ -9,14 +9,21 @@ import '../i18n/i18n.dart';
 import '../models/alert_prefs.dart';
 import '../models/filter.dart';
 import '../models/tender.dart';
+import '../push/device_sync.dart';
+import '../push/push_service.dart';
 
 /// État partagé de l'app : avis chargés, recherche, enregistrés, téléchargements,
 /// alertes et langue. Les choix de l'utilisateur sont gardés sur le téléphone.
 class AppState extends ChangeNotifier {
-  AppState({TenderRepository? repository})
-    : repository = repository ?? DemoTenderRepository();
+  AppState({TenderRepository? repository, PushService? push, this.deviceSync})
+    : repository = repository ?? DemoTenderRepository(),
+      push = push ?? const NoPushService();
 
   final TenderRepository repository;
+
+  /// Notifications du téléphone et inscription auprès de l'API (absente en démo).
+  final PushService push;
+  final DeviceSync? deviceSync;
   SharedPreferences? _prefs;
 
   List<Tender> tenders = [];
@@ -32,6 +39,28 @@ class AppState extends ChangeNotifier {
   String? loadError;
 
   bool get isDemo => repository.isDemo;
+
+  PushPermission pushPermission = PushPermission.unavailable;
+
+  /// Le serveur connaît ce téléphone et lui enverra les alertes.
+  bool pushRegistered = false;
+
+  /// Dernière inscription au serveur échouée (réseau) ; retentée au prochain changement.
+  String? pushError;
+
+  String? _pushToken;
+  Timer? _syncTimer;
+  final List<StreamSubscription<Object?>> _subs = [];
+
+  /// Notification touchée : identifiant de l'avis, ou `null` pour la liste.
+  final _opened = StreamController<String?>.broadcast();
+  Stream<String?> get openRequests => _opened.stream;
+
+  /// Notification reçue pendant que l'app est ouverte.
+  final _foreground = StreamController<PushMessage>.broadcast();
+  Stream<PushMessage> get foregroundMessages => _foreground.stream;
+
+  bool get wantsPush => alerts.newTenders || alerts.deadlineReminders;
   String lang = 'fr';
   bool onboarded = false;
 
@@ -150,6 +179,8 @@ class AppState extends ChangeNotifier {
     saved.contains(id) ? saved.remove(id) : saved.add(id);
     notifyListeners();
     _prefs?.setStringList(_kSaved, saved.toList());
+    // Les rappels de date limite portent sur les avis enregistrés.
+    _scheduleSync();
   }
 
   /// Récupère le dossier de consultation pour le consulter hors connexion.
@@ -199,11 +230,106 @@ class AppState extends ChangeNotifier {
     I18n.use(lang);
     notifyListeners();
     _prefs?.setString(_kLang, lang);
+    // Les notifications arrivent dans la langue de l'app.
+    _scheduleSync();
   }
 
   void finishOnboarding() {
     onboarded = true;
     notifyListeners();
     _prefs?.setBool(_kOnboarded, true);
+  }
+
+  /// Prépare les notifications au lancement. Ne demande rien à l'utilisateur : la
+  /// demande d'autorisation vient à l'enregistrement des alertes. Ne lève jamais.
+  Future<void> initPush() async {
+    if (isDemo || deviceSync == null || !await push.init()) {
+      pushPermission = PushPermission.unavailable;
+      notifyListeners();
+      return;
+    }
+    _subs
+      ..add(
+        push.onTokenRefresh.listen((t) {
+          _pushToken = t;
+          _syncDevice();
+        }),
+      )
+      ..add(push.onOpened.listen(_open))
+      ..add(push.onForeground.listen(_onForeground));
+    pushPermission = await push.permission();
+    if (pushPermission == PushPermission.granted) {
+      _pushToken = await push.token();
+      await _syncDevice();
+    }
+    notifyListeners();
+    final launch = await push.launchMessage();
+    if (launch != null) _open(launch);
+  }
+
+  /// Après l'enregistrement des alertes : demande l'autorisation si des alertes sont
+  /// voulues, puis inscrit (ou désinscrit) le téléphone auprès du serveur.
+  Future<PushPermission> applyPushPreferences() async {
+    if (pushPermission == PushPermission.unavailable) return pushPermission;
+    if (wantsPush && pushPermission != PushPermission.granted) {
+      pushPermission = await push.requestPermission();
+    }
+    if (pushPermission == PushPermission.granted) {
+      _pushToken ??= await push.token();
+    }
+    _syncTimer?.cancel();
+    await _syncDevice();
+    return pushPermission;
+  }
+
+  /// Regroupe les changements rapprochés (plusieurs avis enregistrés d'affilée).
+  void _scheduleSync() {
+    if (_pushToken == null) return;
+    _syncTimer?.cancel();
+    _syncTimer = Timer(const Duration(seconds: 2), _syncDevice);
+  }
+
+  Future<void> _syncDevice() async {
+    final token = _pushToken;
+    final sync = deviceSync;
+    if (token == null || sync == null) return;
+    try {
+      if (pushPermission == PushPermission.granted && wantsPush) {
+        await sync.register(
+          token: token,
+          platform: push.platform,
+          lang: lang,
+          prefs: alerts,
+          saved: saved,
+        );
+        pushRegistered = true;
+      } else if (pushRegistered || pushPermission == PushPermission.granted) {
+        await sync.unregister(token);
+        pushRegistered = false;
+      }
+      pushError = null;
+    } catch (e) {
+      pushError = '$e';
+    }
+    notifyListeners();
+  }
+
+  void _open(PushMessage m) => _opened.add(m.tenderId);
+
+  void _onForeground(PushMessage m) {
+    _foreground.add(m);
+    // Une alerte signale de nouveaux avis : on recharge la liste.
+    refresh();
+  }
+
+  @override
+  void dispose() {
+    _syncTimer?.cancel();
+    for (final s in _subs) {
+      s.cancel();
+    }
+    _opened.close();
+    _foreground.close();
+    super.dispose();
   }
 }

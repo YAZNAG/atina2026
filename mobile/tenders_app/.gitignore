@@ -46,3 +46,7 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Configuration Firebase propre à chaque déploiement (voir README)
+/android/app/google-services.json
+/ios/Runner/GoogleService-Info.plist

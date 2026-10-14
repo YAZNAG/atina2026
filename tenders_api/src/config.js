@@ -41,6 +41,10 @@ export function readConfig(env = process.env) {
     detailsPerRun: Math.max(0, int(env.PMMP_DETAILS_PER_RUN, 400)),
     window: env.COLLECT_WINDOW ?? '00:00-07:00',
     collectAt: env.COLLECT_AT ?? '02:30',
+
+    // Notifications : clé du compte de service Firebase (fichier JSON), heure d'envoi.
+    fcmServiceAccount: (env.FCM_SERVICE_ACCOUNT ?? '').trim(),
+    notifyAt: env.NOTIFY_AT ?? '08:30',
   };
   return config;
 }

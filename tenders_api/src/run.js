@@ -3,6 +3,8 @@
 import { assertCanCollect, inWindow } from './config.js';
 import { collect } from './pmmp/collector.js';
 import { PoliteClient } from './pmmp/http.js';
+import { FcmSender, readServiceAccount } from './push/fcm.js';
+import { notify } from './push/notify.js';
 
 /**
  * @param {object} o
@@ -31,4 +33,14 @@ export async function runCollect({ store, config, force = false, log = console.l
     fetchImpl,
   });
   return collect({ store, client, config: limits, log, now });
+}
+
+/** Tournée de notifications ; sans compte de service Firebase, rien n'est envoyé. */
+export async function runNotify({ store, config, log = console.log, fetchImpl, now = () => new Date() }) {
+  if (!config.fcmServiceAccount) {
+    return { status: 'desactive', reason: 'FCM_SERVICE_ACCOUNT est vide' };
+  }
+  const sender = new FcmSender({ account: readServiceAccount(config.fcmServiceAccount), fetchImpl });
+  const stats = await notify({ store, sender, now, log });
+  return { status: 'succes', ...stats };
 }

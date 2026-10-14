@@ -1,2 +1,4 @@
 data/
 .env
+service-account*.json
+*-firebase-adminsdk-*.json

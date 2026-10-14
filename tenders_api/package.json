@@ -11,6 +11,7 @@
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning src/server.js",
     "collect": "node --disable-warning=ExperimentalWarning src/collect.js",
+    "notify": "node --disable-warning=ExperimentalWarning src/notify.js",
     "test": "node --disable-warning=ExperimentalWarning --test 'test/*.test.js'"
   },
   "dependencies": {

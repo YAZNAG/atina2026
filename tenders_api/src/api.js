@@ -4,6 +4,7 @@ import cors from 'cors';
 import express from 'express';
 
 import { REGION_NAMES } from './pmmp/places.js';
+import { InvalidDevice, parseDevice } from './push/prefs.js';
 
 const CATEGORIES = ['travaux', 'services', 'fournitures'];
 const SORTS = ['recent', 'deadline', 'amount'];
@@ -31,7 +32,24 @@ export function createApp({ store, config, now = Date.now }) {
   app.use(compression());
   app.use(cors({ origin: config.corsOrigins.includes('*') ? '*' : config.corsOrigins }));
 
+  app.use(express.json({ limit: '64kb' }));
+
   app.get('/health', (_req, res) => res.json({ ok: true }));
+
+  // Inscription d'un téléphone aux notifications, ou mise à jour de ses alertes.
+  app.post('/api/devices', (req, res) => {
+    const device = parseDevice(req.body);
+    store.upsertDevice(device, new Date(now()).toISOString());
+    res.status(204).end();
+  });
+
+  // Désinscription : alertes coupées dans l'app.
+  app.delete('/api/devices', (req, res) => {
+    const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+    if (!token) throw new BadRequest('token manquant');
+    store.deleteDevice(token);
+    res.status(204).end();
+  });
 
   app.get('/api/meta', (_req, res) => {
     const last = store.lastRun();
@@ -50,6 +68,7 @@ export function createApp({ store, config, now = Date.now }) {
         newCount: last.new_count,
       },
       lastSuccessAt: success?.finished_at ?? null,
+      push: Boolean(config.fcmServiceAccount),
     });
   });
 
@@ -80,7 +99,12 @@ export function createApp({ store, config, now = Date.now }) {
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
-    if (err instanceof BadRequest) return res.status(400).json({ error: err.message });
+    if (err instanceof BadRequest || err instanceof InvalidDevice) {
+      return res.status(400).json({ error: err.message });
+    }
+    if (err.type === 'entity.parse.failed' || err.type === 'entity.too.large') {
+      return res.status(400).json({ error: 'corps JSON invalide ou trop gros' });
+    }
     console.error(err);
     res.status(500).json({ error: 'Erreur interne' });
   });

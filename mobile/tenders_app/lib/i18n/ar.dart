@@ -240,4 +240,26 @@ const arStrings = <String, String>{
       'الملف على البوابة الرسمية ({size})',
   'Voir sur le portail officiel': 'عرض على البوابة الرسمية',
   "Impossible d'ouvrir le portail": 'تعذّر فتح البوابة',
+
+  // Notifications
+  'Nouvel avis': 'إعلان جديد',
+  'Voir': 'عرض',
+  'Alertes enregistrées : vous serez prévenu sur ce téléphone.':
+      'تم حفظ التنبيهات: ستتوصل بالإشعارات على هذا الهاتف.',
+  'Alertes enregistrées, mais les notifications sont bloquées dans les réglages du téléphone.':
+      'تم حفظ التنبيهات، لكن الإشعارات محظورة في إعدادات الهاتف.',
+  "Mode démonstration : les alertes ne sont pas envoyées. Elles le seront une fois l'app reliée au serveur.":
+      'وضع تجريبي: لا تُرسل التنبيهات. ستُرسل بعد ربط التطبيق بالخادم.',
+  'Notifications indisponibles sur cet appareil.':
+      'الإشعارات غير متاحة على هذا الجهاز.',
+  'Notifications bloquées : autorisez-les dans les réglages du téléphone pour recevoir vos alertes.':
+      'الإشعارات محظورة: اسمح بها في إعدادات الهاتف لتتوصل بتنبيهاتك.',
+  "À l'enregistrement, le téléphone vous demandera d'autoriser les notifications.":
+      'عند الحفظ، سيطلب منك الهاتف السماح بالإشعارات.',
+  "Inscription au serveur impossible pour l'instant : nouvel essai au prochain changement.":
+      'تعذّر التسجيل لدى الخادم حاليًا: ستُعاد المحاولة عند التغيير القادم.',
+  'Notifications actives : un résumé chaque matin vers 8 h 30.':
+      'الإشعارات مفعّلة: ملخص كل صباح حوالي الساعة 8:30.',
+  'Notifications autorisées. Enregistrez vos alertes pour les recevoir.':
+      'الإشعارات مسموح بها. احفظ تنبيهاتك لتتوصل بها.',
 };

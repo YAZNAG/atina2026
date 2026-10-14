@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -5,19 +7,24 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/config.dart';
 import 'data/tender_repository.dart';
 import 'i18n/i18n.dart';
+import 'push/device_sync.dart';
+import 'push/push_service.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/shell.dart';
+import 'screens/tender_detail_screen.dart';
 import 'state/app_state.dart';
 import 'state/scope.dart';
 import 'theme/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final state = AppState(
-    repository: AppConfig.demoData
-        ? DemoTenderRepository()
-        : ApiTenderRepository(AppConfig.apiUrl),
-  );
+  final state = AppConfig.demoData
+      ? AppState()
+      : AppState(
+          repository: ApiTenderRepository(AppConfig.apiUrl),
+          push: FirebasePushService(),
+          deviceSync: DeviceSync(AppConfig.apiUrl),
+        );
   // Le démarrage ne doit jamais rester bloqué : chargement plafonné.
   await Future.any([
     Future.wait([state.load(), I18n.loadDateSymbols()]),
@@ -33,9 +40,64 @@ Future<void> main() async {
   runApp(TendersApp(state: state));
 }
 
-class TendersApp extends StatelessWidget {
+class TendersApp extends StatefulWidget {
   final AppState state;
   const TendersApp({super.key, required this.state});
+
+  @override
+  State<TendersApp> createState() => _TendersAppState();
+}
+
+class _TendersAppState extends State<TendersApp> {
+  final _navigator = GlobalKey<NavigatorState>();
+  final _messenger = GlobalKey<ScaffoldMessengerState>();
+  final List<StreamSubscription<Object?>> _subs = [];
+
+  AppState get state => widget.state;
+
+  @override
+  void initState() {
+    super.initState();
+    // Abonnement avant l'initialisation : la notification qui a lancé l'app arrive
+    // par le même flux.
+    _subs
+      ..add(state.openRequests.listen(_openTender))
+      ..add(state.foregroundMessages.listen(_showBanner));
+    state.initPush();
+  }
+
+  @override
+  void dispose() {
+    for (final s in _subs) {
+      s.cancel();
+    }
+    super.dispose();
+  }
+
+  /// Notification touchée : fiche de l'avis, ou liste pour une alerte groupée.
+  Future<void> _openTender(String? id) async {
+    if (id != null && state.byId(id) == null) await state.refresh();
+    final nav = _navigator.currentState;
+    if (nav == null || !mounted) return;
+    nav.popUntil((r) => r.isFirst);
+    if (id != null && state.byId(id) != null) {
+      nav.push(TenderDetailScreen.route(id));
+    }
+  }
+
+  void _showBanner(PushMessage m) {
+    final title = m.title ?? t('Nouvel avis');
+    _messenger.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(m.body == null ? title : '$title\n${m.body}'),
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: t('Voir'),
+          onPressed: () => _openTender(m.tenderId),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +109,8 @@ class TendersApp extends StatelessWidget {
         builder: (context, _) => MaterialApp(
           title: AppConfig.name,
           debugShowCheckedModeBanner: false,
+          navigatorKey: _navigator,
+          scaffoldMessengerKey: _messenger,
           theme: appTheme(),
           locale: Locale(state.lang),
           supportedLocales: const [Locale('fr'), Locale('ar')],

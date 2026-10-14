@@ -4,6 +4,7 @@ import '../data/demo_tenders.dart';
 import '../i18n/i18n.dart';
 import '../models/alert_prefs.dart';
 import '../models/tender.dart';
+import '../push/push_service.dart';
 import '../state/scope.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
@@ -28,6 +29,29 @@ class _AlertsScreenState extends State<AlertsScreen> {
   void dispose() {
     _keyword.dispose();
     super.dispose();
+  }
+
+  bool _saving = false;
+
+  /// Enregistre, puis demande l'autorisation des notifications si besoin et inscrit
+  /// le téléphone auprès du serveur.
+  Future<void> _save(AlertPrefs p) async {
+    final state = AppScope.read(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    setState(() => _saving = true);
+    state.setAlerts(p);
+    final permission = await state.applyPushPreferences();
+    final wants = p.newTenders || p.deadlineReminders;
+    final message = !wants || permission == PushPermission.unavailable
+        ? t('Alertes enregistrées')
+        : permission == PushPermission.granted
+        ? t('Alertes enregistrées : vous serez prévenu sur ce téléphone.')
+        : t(
+            'Alertes enregistrées, mais les notifications sont bloquées dans les réglages du téléphone.',
+          );
+    messenger.showSnackBar(SnackBar(content: Text(message)));
+    if (mounted) navigator.pop();
   }
 
   void _addKeyword(AlertPrefs p) {
@@ -57,6 +81,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         children: [
+          const _PushStatus(),
+          const SizedBox(height: 16),
           Panel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,13 +296,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 PrimaryButton(
                   icon: Icons.notifications_active_outlined,
                   label: t('Enregistrer mes alertes'),
-                  onPressed: () {
-                    AppScope.read(context).setAlerts(p);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(t('Alertes enregistrées'))),
-                    );
-                    Navigator.pop(context);
-                  },
+                  onPressed: _saving ? null : () => _save(p),
                 ),
               ],
             ),
@@ -335,6 +355,93 @@ class _SwitchRow extends StatelessWidget {
             Switch(value: value, onChanged: onChanged),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Où en sont les notifications sur ce téléphone.
+class _PushStatus extends StatelessWidget {
+  const _PushStatus();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    final (icon, text, fg, bg) = switch (state.pushPermission) {
+      _ when state.isDemo => (
+        Icons.science_outlined,
+        t(
+          'Mode démonstration : les alertes ne sont pas envoyées. Elles le seront une fois l\'app reliée au serveur.',
+        ),
+        K.amber,
+        K.amberSoft,
+      ),
+      PushPermission.unavailable => (
+        Icons.notifications_off_outlined,
+        t('Notifications indisponibles sur cet appareil.'),
+        K.body,
+        K.bg,
+      ),
+      PushPermission.denied => (
+        Icons.notifications_off_outlined,
+        t(
+          'Notifications bloquées : autorisez-les dans les réglages du téléphone pour recevoir vos alertes.',
+        ),
+        K.coral,
+        K.coralSoft,
+      ),
+      PushPermission.notDetermined => (
+        Icons.notifications_none_rounded,
+        t(
+          'À l\'enregistrement, le téléphone vous demandera d\'autoriser les notifications.',
+        ),
+        K.primary,
+        K.primaryTint,
+      ),
+      PushPermission.granted
+          when state.pushError != null && !state.pushRegistered =>
+        (
+          Icons.sync_problem_rounded,
+          t(
+            'Inscription au serveur impossible pour l\'instant : nouvel essai au prochain changement.',
+          ),
+          K.amber,
+          K.amberSoft,
+        ),
+      PushPermission.granted => (
+        Icons.notifications_active_outlined,
+        state.pushRegistered
+            ? t('Notifications actives : un résumé chaque matin vers 8 h 30.')
+            : t(
+                'Notifications autorisées. Enregistrez vos alertes pour les recevoir.',
+              ),
+        K.primary,
+        K.primaryTint,
+      ),
+    };
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(R.lg),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: fg, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: fg,
+                fontSize: 13,
+                height: 1.4,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -4,6 +4,13 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Notifications : la configuration Firebase (google-services.json, téléchargée depuis
+// la console Firebase) n'est pas versionnée. Sans elle, l'app se construit et
+// fonctionne, simplement sans notifications.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "ma.mounaqasa.mounaqasa"
     compileSdk = flutter.compileSdkVersion

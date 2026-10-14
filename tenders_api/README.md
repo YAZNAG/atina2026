@@ -24,6 +24,42 @@ un seul fichier, rien à installer).
 Les coordonnées des agents (nom, e-mail, téléphone) affichées sur les fiches ne sont
 **pas** collectées.
 
+## Notifications push
+
+Chaque matin à `NOTIFY_AT` (8 h 30 par défaut, heure de Casablanca), le serveur
+parcourt les téléphones inscrits et envoie, par Firebase Cloud Messaging (Android et
+iOS) :
+
+- **une notification groupée** pour les nouveaux avis qui correspondent aux alertes du
+  téléphone (catégories, régions, mots-clés : mêmes règles que dans l'app). Un seul
+  avis : la notification ouvre directement sa fiche. Seuls les avis publiés dans la
+  semaine comptent, pour que la première collecte n'annonce pas des milliers d'avis
+  anciens ;
+- **un rappel par avis enregistré** dont la date limite tombe dans le délai choisi (1,
+  3 ou 7 jours), trois au plus par jour.
+
+Le même avis n'est jamais signalé deux fois au même téléphone. Les textes partent en
+français ou en arabe, selon la langue de l'app. Si Google signale qu'un jeton n'est plus
+valable (app désinstallée), le téléphone est retiré. Une panne passagère fait retenter
+ce téléphone le lendemain. Un accès refusé par Google arrête la tournée.
+
+L'app inscrit le téléphone (`POST /api/devices`) quand l'utilisateur enregistre ses
+alertes et autorise les notifications. Le serveur ne reçoit que le jeton de
+notification, la langue, les préférences d'alertes et les identifiants des avis
+enregistrés : **aucune donnée personnelle**.
+
+Mise en place, une seule fois :
+
+1. Créez un projet sur la [console Firebase](https://console.firebase.google.com/).
+2. Dans *Paramètres du projet → Comptes de service*, cliquez sur *Générer une nouvelle
+   clé privée*. Placez le fichier JSON sur le serveur, hors du dépôt, puis indiquez son
+   chemin dans `FCM_SERVICE_ACCOUNT`.
+3. Configurez l'app (voir le README de `mobile/tenders_app`, section Notifications).
+
+```bash
+npm run notify      # envoie la tournée du jour maintenant (pour tester)
+```
+
 ## Règles de collecte
 
 Le portail est un service public dont dépendent toutes les entreprises
@@ -63,14 +99,17 @@ Variables principales (toutes dans `.env.example`) :
 | `COLLECT_WINDOW` | plage horaire autorisée | `00:00-07:00` |
 | `PMMP_DELAY_MS` | pause entre requêtes (≥ 2000) | `3000` |
 | `PMMP_DETAILS_PER_RUN` | fiches lues au plus par collecte | `400` |
+| `FCM_SERVICE_ACCOUNT` | fichier JSON du compte de service Firebase, vide = pas de notifications | — |
+| `NOTIFY_AT` | heure de la tournée de notifications (Casablanca) | `08:30` |
 
 ## Lancer
 
 ```bash
-npm start                    # API + collecte quotidienne à COLLECT_AT
+npm start                    # API + collecte (COLLECT_AT) + notifications (NOTIFY_AT)
 npm run collect              # une collecte maintenant (refusée hors plage horaire)
 npm run collect -- --force   # essai réduit en journée : 1 page, 10 fiches
-npm test                     # 36 tests, sans aucune requête vers le vrai portail
+npm run notify               # tournée de notifications maintenant
+npm test                     # 51 tests, sans requête vers le portail ni vers Google
 ```
 
 Codes de sortie de `npm run collect` : `0` succès · `1` échec · `2` refusée (hors plage
@@ -102,7 +141,9 @@ intégrée, laissez `COLLECT_AT` vide et planifiez
 |---|---|
 | `GET /api/tenders` | `{ total, items: [avis] }`. Paramètres : `status` (`open` par défaut, ou `all`), `q` (mots-clés, accents ignorés), `category` (`travaux`, `services`, `fournitures`), `region`, `sort` (`recent`, `deadline`, `amount`), `limit` (1 à 500, 100 par défaut), `offset` |
 | `GET /api/tenders/:id` | un avis (`id` = `orgAcronyme:refConsultation`, à encoder dans l'URL) |
-| `GET /api/meta` | compteurs, régions, dernière collecte |
+| `GET /api/meta` | compteurs, régions, dernière collecte, `push` (notifications configurées) |
+| `POST /api/devices` | inscrit ou met à jour un téléphone : `{ token, platform (android, ios), lang (fr, ar), prefs, saved }`, réponse 204 |
+| `DELETE /api/devices` | désinscrit un téléphone : `{ token }`, réponse 204 |
 | `GET /health` | `{ ok: true }` |
 
 Un avis contient : `id`, `reference`, `title`, `buyer`, `procedure`, `category`,
@@ -125,7 +166,10 @@ n'est pas repris. Les tests vérifient trois choses :
   formulaire, arrêt sur les avis clôturés, second passage sans relecture, refus 403,
   coupe-circuit, `robots.txt`, limite de pages, structure inconnue, une seule collecte à
   la fois, plage horaire et pause entre requêtes ;
-- **l'API** : filtres, tri, pagination, paramètres invalides.
+- **l'API** : filtres, tri, pagination, paramètres invalides ;
+- **les notifications** : validation des inscriptions, correspondance avec les alertes,
+  signature du jeton Google (JWT RS256), format des messages FCM v1, regroupement,
+  absence de doublons, rappels, jetons périmés, pannes et accès refusé.
 
 `node scripts/contract.js` produit la réponse de l'API à partir de ces pages.
 L'app la relit dans ses tests (`mobile/tenders_app/test/fixtures/api_tenders.json`),
@@ -140,5 +184,7 @@ ce qui garantit que le serveur et l'app parlent le même format.
   consultations privées demandent d'autres sources.
 - **Avis allotis** : le montant et la caution sont donnés par lot sur une page
   séparée. Pour ces avis, l'API ne donne que le nombre de lots.
+- **Notifications jamais envoyées pour de vrai** : l'envoi a été testé contre un faux
+  service Google. La première tournée avec un vrai projet Firebase fera foi.
 - **Dossiers de consultation (DCE)** : ils ne sont pas téléchargés. L'app renvoie vers
   la fiche officielle, où le portail les remet après un formulaire.
