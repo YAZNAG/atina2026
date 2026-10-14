@@ -29,7 +29,7 @@ Toutes les captures sont dans `captures/`. Pour les régénérer :
 | Télécharger les consultations en un clic | Bouton du bas de la fiche : avis officiel sur le portail (exemples : téléchargement simulé) |
 | Toujours disponibles (hors ligne) | Dernière liste gardée sur le téléphone ; onglet **Hors ligne** pour les dossiers (mode exemples) |
 | Notifications selon vos préférences | Écran **Alertes** : nouveaux avis, rappels de date limite (1, 3 ou 7 j), catégories, mots-clés, régions. Notifications push envoyées par le serveur chaque matin |
-| AI Summaries | Bloc **En bref** sur chaque fiche |
+| AI Summaries | **Résumé IA** sur chaque fiche (Claude, via le serveur) en français et en arabe ; résumé automatique de l'app en mode exemples ou si l'IA est indisponible |
 | AI Assistant | Onglet **Assistant** : recherche en langage courant (« travaux à Marrakech », « fournitures de plus de 5 millions »…) |
 | — | En plus : avis **enregistrés**, interface **français / arabe** (RTL) |
 
@@ -109,10 +109,9 @@ sans notifications. Les notifications sont aussi désactivées en mode exemples.
    téléphones. L'envoi a été testé contre un faux service Google, et l'app n'a pas pu
    être compilée pour Android ou iOS dans l'environnement de développement (seulement
    pour le web).
-3. **L'IA** : le résumé est construit à partir des champs de l'avis, et l'assistant
-   comprend les demandes par mots-clés, sans connexion. Un vrai modèle de langage
-   (lecture du CPS, réponses libres) doit passer par le serveur, car la clé d'API ne peut
-   pas être embarquée dans l'app.
+3. **L'assistant** comprend encore les demandes par mots-clés, sans connexion. Les
+   résumés IA passent déjà par le serveur (clé d'API Anthropic côté serveur). Un
+   assistant conversationnel et la lecture du CPS pourraient suivre le même chemin.
 4. **Les consultations privées** : le portail ne publie que les marchés publics.
 5. **Publication** : icône de l'app (le logo actuel est dessiné en Flutter, l'icône du
    lanceur est encore celle de Flutter), identifiant définitif (`ma.mounaqasa.mounaqasa`
@@ -124,7 +123,7 @@ sans notifications. Les notifications sont aussi désactivées en mode exemples.
 flutter pub get
 flutter run                 # téléphone ou émulateur branché
 flutter run -d chrome       # aperçu dans le navigateur
-flutter test                # 62 tests : logique, API, notifications, chaque écran en FR et AR
+flutter test                # 68 tests : logique, API, notifications, résumés IA, chaque écran en FR et AR
 flutter build apk --release --dart-define=API_URL=https://api.exemple.ma
 flutter build ipa           # sur macOS avec Xcode
 ```
@@ -136,6 +135,7 @@ flutter build ipa           # sur macOS avec Xcode
 | `lib/core/` | nom de l'app, mode démonstration |
 | `lib/data/` | source des avis, avis de démonstration, assistant de recherche |
 | `lib/models/` | avis, filtres, préférences d'alertes |
+| `lib/ai/` | résumés IA lus sur l'API |
 | `lib/push/` | notifications du téléphone (Firebase) et inscription auprès du serveur |
 | `lib/state/` | état partagé (`AppState`) et sa diffusion dans l'arbre (`AppScope`) |
 | `lib/screens/` | un fichier par écran |

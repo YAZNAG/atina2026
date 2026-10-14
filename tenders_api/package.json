@@ -12,9 +12,11 @@
     "start": "node --disable-warning=ExperimentalWarning src/server.js",
     "collect": "node --disable-warning=ExperimentalWarning src/collect.js",
     "notify": "node --disable-warning=ExperimentalWarning src/notify.js",
+    "summarize": "node --disable-warning=ExperimentalWarning src/summarize.js",
     "test": "node --disable-warning=ExperimentalWarning --test 'test/*.test.js'"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.134.0",
     "cheerio": "^1.2.0",
     "compression": "^1.8.2",
     "cors": "^2.8.6",

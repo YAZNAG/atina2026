@@ -65,6 +65,19 @@ CREATE TABLE IF NOT EXISTS devices (
   last_notified_at  TEXT NOT NULL              -- avis vus après cette date = nouveaux
 );
 
+-- Résumés rédigés par l'IA, un par avis, refaits si l'avis change (rectificatif).
+CREATE TABLE IF NOT EXISTS ai_summaries (
+  tender_id          TEXT PRIMARY KEY,
+  source_hash        TEXT NOT NULL,            -- version de l'avis résumée
+  status             TEXT NOT NULL,            -- ok, refuse
+  summary            TEXT,                     -- JSON { fr, ar }
+  model              TEXT,
+  input_tokens       INTEGER,
+  output_tokens      INTEGER,
+  cache_read_tokens  INTEGER,
+  created_at         TEXT NOT NULL
+);
+
 -- Ce qui a déjà été signalé : jamais deux fois la même alerte.
 CREATE TABLE IF NOT EXISTS notifications_sent (
   token      TEXT NOT NULL,
@@ -308,6 +321,56 @@ export class TenderStore {
       'INSERT OR IGNORE INTO notifications_sent (token, tender_id, kind, sent_at) VALUES (?, ?, ?, ?)',
     );
     for (const id of tenderIds) stmt.run(token, id, kind, now);
+  }
+
+  /** Version de l'avis à résumer : change avec la liste et avec la fiche. */
+  summarySourceHash(id) {
+    const r = this.db.prepare('SELECT list_hash, detail_for_hash FROM tenders WHERE id = ?').get(id);
+    return r ? `${r.list_hash}:${r.detail_for_hash ?? ''}` : null;
+  }
+
+  /** Résumé enregistré pour la version actuelle de l'avis, ou null. */
+  summaryFor(id) {
+    const hash = this.summarySourceHash(id);
+    if (!hash) return null;
+    const r = this.db.prepare('SELECT * FROM ai_summaries WHERE tender_id = ? AND source_hash = ?').get(id, hash);
+    if (!r) return null;
+    return {
+      status: r.status,
+      summary: r.summary ? JSON.parse(r.summary) : null,
+      model: r.model,
+      createdAt: r.created_at,
+    };
+  }
+
+  saveSummary(id, sourceHash, { status, summary = null, model = null, usage = {} }, now) {
+    this.db.prepare(`
+      INSERT INTO ai_summaries (tender_id, source_hash, status, summary, model, input_tokens,
+        output_tokens, cache_read_tokens, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (tender_id) DO UPDATE SET source_hash = excluded.source_hash,
+        status = excluded.status, summary = excluded.summary, model = excluded.model,
+        input_tokens = excluded.input_tokens, output_tokens = excluded.output_tokens,
+        cache_read_tokens = excluded.cache_read_tokens, created_at = excluded.created_at`).run(
+      id, sourceHash, status, summary ? JSON.stringify(summary) : null, model,
+      usage.input ?? null, usage.output ?? null, usage.cacheRead ?? null, now,
+    );
+  }
+
+  /** Résumés demandés à l'IA depuis `sinceIso` (plafond quotidien). */
+  summariesSince(sinceIso) {
+    return this.db.prepare('SELECT COUNT(*) AS n FROM ai_summaries WHERE created_at >= ?').get(sinceIso).n;
+  }
+
+  /** Avis ouverts, fiche lue, sans résumé à jour : les plus récents d'abord. */
+  needingSummary(limit, nowMs) {
+    return this.db.prepare(`
+      SELECT t.id FROM tenders t
+      LEFT JOIN ai_summaries s ON s.tender_id = t.id
+        AND s.source_hash = t.list_hash || ':' || COALESCE(t.detail_for_hash, '')
+      WHERE t.deadline_ts > ? AND t.detail_for_hash IS NOT NULL AND s.tender_id IS NULL
+      ORDER BY t.published_ts DESC, t.id
+      LIMIT ?`).all(nowMs, limit).map((r) => r.id);
   }
 
   deviceCount() {

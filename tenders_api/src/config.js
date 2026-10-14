@@ -45,6 +45,13 @@ export function readConfig(env = process.env) {
     // Notifications : clé du compte de service Firebase (fichier JSON), heure d'envoi.
     fcmServiceAccount: (env.FCM_SERVICE_ACCOUNT ?? '').trim(),
     notifyAt: env.NOTIFY_AT ?? '08:30',
+
+    // Résumés IA (Claude) : actifs dès qu'une clé d'API Anthropic est fournie.
+    aiEnabled: Boolean((env.ANTHROPIC_API_KEY ?? '').trim() || (env.ANTHROPIC_AUTH_TOKEN ?? '').trim()),
+    aiModel: (env.AI_MODEL ?? '').trim() || 'claude-opus-5-5',
+    aiEffort: ['low', 'medium', 'high', 'xhigh', 'max'].includes(env.AI_EFFORT) ? env.AI_EFFORT : 'low',
+    aiDailyLimit: Math.max(0, int(env.AI_DAILY_LIMIT, 300)),
+    aiPrecomputePerRun: Math.max(0, int(env.AI_PRECOMPUTE_PER_RUN, 100)),
   };
   return config;
 }

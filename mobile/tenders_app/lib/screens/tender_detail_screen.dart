@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../ai/ai_summary.dart';
 import '../i18n/i18n.dart';
 import '../models/tender.dart';
 import '../state/scope.dart';
@@ -425,71 +426,170 @@ class _InfoGrid extends StatelessWidget {
   }
 }
 
-class _Summary extends StatelessWidget {
+/// « En bref » : résumé rédigé par l'IA quand le serveur en fournit un, sinon résumé
+/// construit dans l'app à partir des champs de l'avis.
+class _Summary extends StatefulWidget {
   final Tender x;
   const _Summary(this.x);
 
   @override
+  State<_Summary> createState() => _SummaryState();
+}
+
+class _SummaryState extends State<_Summary> {
+  Future<AiSummaries?>? _ai;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _ai ??= AppScope.read(context).aiSummary(widget.x.id);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(R.lg),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFEAF6F2), Color(0xFFF2EFFF)],
-        ),
-        border: Border.all(color: K.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.auto_awesome, size: 18, color: K.primary),
-              const SizedBox(width: 8),
-              Text(
-                t('En bref'),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+    final lang = AppScope.of(context).lang;
+    return FutureBuilder<AiSummaries?>(
+      future: _ai,
+      builder: (context, snap) {
+        final waiting = snap.connectionState == ConnectionState.waiting;
+        final ai = snap.data?.of(lang);
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(R.lg),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFEAF6F2), Color(0xFFF2EFFF)],
+            ),
+            border: Border.all(color: K.line),
           ),
-          const SizedBox(height: 10),
-          for (final line in x.summary)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 7),
-                    child: Icon(Icons.circle, size: 5, color: K.primary),
-                  ),
-                  const SizedBox(width: 10),
+                  const Icon(Icons.auto_awesome, size: 18, color: K.primary),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      line,
+                      ai != null ? t('Résumé IA') : t('En bref'),
                       style: const TextStyle(
-                        color: K.body,
-                        height: 1.45,
-                        fontSize: 13.5,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
+                  if (waiting)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: K.primary,
+                      ),
+                    ),
                 ],
               ),
+              const SizedBox(height: 10),
+              if (waiting) ...[
+                Text(
+                  t("L'IA lit l'avis…"),
+                  style: const TextStyle(color: K.muted, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+              ],
+              if (ai != null) ...[
+                Text(
+                  ai.headline,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                for (final p in ai.points) _Bullet(p),
+                if (ai.attention.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  for (final a in ai.attention)
+                    _Bullet(
+                      a,
+                      icon: Icons.warning_amber_rounded,
+                      color: K.coral,
+                    ),
+                ],
+                if (ai.forWhom.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  _Bullet(
+                    ai.forWhom,
+                    icon: Icons.groups_outlined,
+                    color: K.services,
+                  ),
+                ],
+                const SizedBox(height: 4),
+                Text(
+                  t(
+                    "Rédigé par une IA à partir de l'avis publié : vérifiez toujours le dossier officiel.",
+                  ),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: K.muted,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ] else if (!waiting) ...[
+                for (final line in widget.x.summary) _Bullet(line),
+                const SizedBox(height: 4),
+                Text(
+                  t(
+                    'Résumé automatique : vérifiez toujours le dossier officiel.',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: K.muted,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Bullet extends StatelessWidget {
+  final String text;
+  final IconData? icon;
+  final Color color;
+  const _Bullet(this.text, {this.icon, this.color = K.primary});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(top: icon == null ? 7 : 1),
+            child: Icon(
+              icon ?? Icons.circle,
+              size: icon == null ? 5 : 16,
+              color: color,
             ),
-          const SizedBox(height: 4),
-          Text(
-            t('Résumé automatique : vérifiez toujours le dossier officiel.'),
-            style: const TextStyle(
-              fontSize: 11,
-              color: K.muted,
-              fontStyle: FontStyle.italic,
+          ),
+          SizedBox(width: icon == null ? 10 : 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: K.body,
+                height: 1.45,
+                fontSize: 13.5,
+              ),
             ),
           ),
         ],

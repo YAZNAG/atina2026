@@ -24,6 +24,47 @@ un seul fichier, rien à installer).
 Les coordonnées des agents (nom, e-mail, téléphone) affichées sur les fiches ne sont
 **pas** collectées.
 
+## Résumés IA
+
+Chaque avis peut recevoir un **résumé rédigé par Claude** (modèle `claude-opus-5-5` par
+défaut), en français et en arabe, en un seul appel : une phrase d'accroche, 3 à 5
+points utiles pour décider (prestation, budget, caution, délai, visite, lots), les
+points de vigilance (délai court, caution élevée, qualification exigée…) et le profil
+d'entreprise visé.
+
+- **Réponse garantie** : la sortie est contrainte par un schéma JSON (structured
+  outputs). Le serveur borne encore la longueur de chaque champ.
+- **Fidèle à l'avis** : le résumé ne s'appuie que sur les champs collectés (objet,
+  acheteur, lieu, dates, estimation, caution, visite, lots, qualifications). Il ne lit
+  pas le cahier des charges (CPS), qui n'est pas téléchargé. Le texte de l'avis est
+  traité comme une donnée, jamais comme une consigne.
+- **Une seule rédaction par avis** : le résumé est gardé en base et refait seulement si
+  l'avis change (rectificatif, report). Deux ouvertures simultanées de la même fiche ne
+  coûtent qu'un appel.
+- **Préparé d'avance** : après chaque collecte, les nouveaux avis sont résumés (au
+  plus `AI_PRECOMPUTE_PER_RUN`). Les autres le sont à la première ouverture de leur
+  fiche, en quelques secondes.
+- **Coût maîtrisé** : au plus `AI_DAILY_LIMIT` résumés par jour. Effort de réflexion
+  « faible » par défaut (`AI_EFFORT`), suffisant pour cette tâche. Les consignes
+  communes (≈ 1 300 jetons, avec un exemple) sont mises en cache (prompt caching) : au
+  sein d'une même salve, leur relecture coûte un dixième du prix.
+- **Refus** : si un filtre de sécurité refuse un avis, l'API le relance d'elle-même
+  sur un autre modèle (`fallbacks: "default"`). Un refus définitif est mémorisé et
+  l'app garde son résumé automatique.
+
+Ordre de grandeur, au tarif de Claude Opus 5.5 (4 $ par million de jetons lus,
+20 $ par million écrits, 0,20 $ en lecture de cache) : un résumé lit environ
+1 300 jetons de consignes (en cache) et 400 jetons d'avis, puis écrit 600 à 1 000
+jetons (réflexion comprise). Cela fait **environ 0,01 à 0,03 $ par avis**. Avec une
+centaine de nouveaux avis par jour, comptez quelques dollars par jour. Le journal du
+serveur affiche les jetons de chaque résumé pour suivre le coût réel. Pour réduire la
+facture, `AI_MODEL=claude-sonnet-5-5` ou `claude-haiku-5-5` coûte nettement moins cher,
+pour une qualité à vérifier sur quelques avis.
+
+```bash
+npm run summarize   # résume maintenant les avis ouverts qui n'ont pas de résumé
+```
+
 ## Notifications push
 
 Chaque matin à `NOTIFY_AT` (8 h 30 par défaut, heure de Casablanca), le serveur
@@ -101,6 +142,9 @@ Variables principales (toutes dans `.env.example`) :
 | `PMMP_DETAILS_PER_RUN` | fiches lues au plus par collecte | `400` |
 | `FCM_SERVICE_ACCOUNT` | fichier JSON du compte de service Firebase, vide = pas de notifications | — |
 | `NOTIFY_AT` | heure de la tournée de notifications (Casablanca) | `08:30` |
+| `ANTHROPIC_API_KEY` | clé d'API Anthropic, vide = pas de résumés IA | — |
+| `AI_MODEL` / `AI_EFFORT` | modèle Claude et effort de réflexion | `claude-opus-5-5` / `low` |
+| `AI_DAILY_LIMIT` / `AI_PRECOMPUTE_PER_RUN` | résumés par jour au plus / préparés après chaque collecte | `300` / `100` |
 
 ## Lancer
 
@@ -109,7 +153,8 @@ npm start                    # API + collecte (COLLECT_AT) + notifications (NOTI
 npm run collect              # une collecte maintenant (refusée hors plage horaire)
 npm run collect -- --force   # essai réduit en journée : 1 page, 10 fiches
 npm run notify               # tournée de notifications maintenant
-npm test                     # 51 tests, sans requête vers le portail ni vers Google
+npm run summarize            # résumés IA des avis qui n'en ont pas
+npm test                     # 64 tests, sans requête vers le portail, Google ni Anthropic
 ```
 
 Codes de sortie de `npm run collect` : `0` succès · `1` échec · `2` refusée (hors plage
@@ -140,7 +185,8 @@ intégrée, laissez `COLLECT_AT` vide et planifiez
 | Route | Réponse |
 |---|---|
 | `GET /api/tenders` | `{ total, items: [avis] }`. Paramètres : `status` (`open` par défaut, ou `all`), `q` (mots-clés, accents ignorés), `category` (`travaux`, `services`, `fournitures`), `region`, `sort` (`recent`, `deadline`, `amount`), `limit` (1 à 500, 100 par défaut), `offset` |
-| `GET /api/tenders/:id` | un avis (`id` = `orgAcronyme:refConsultation`, à encoder dans l'URL) |
+| `GET /api/tenders/:id` | un avis (`id` = `orgAcronyme:refConsultation`, à encoder dans l'URL), avec `aiSummary` s'il est déjà rédigé |
+| `GET /api/tenders/:id/summary` | résumé IA `{ fr, ar }` (chacun : `headline`, `points`, `attention`, `forWhom`), rédigé à la première demande. 503 sans clé d'API, 422 si refusé, 429 si le plafond du jour est atteint |
 | `GET /api/meta` | compteurs, régions, dernière collecte, `push` (notifications configurées) |
 | `POST /api/devices` | inscrit ou met à jour un téléphone : `{ token, platform (android, ios), lang (fr, ar), prefs, saved }`, réponse 204 |
 | `DELETE /api/devices` | désinscrit un téléphone : `{ token }`, réponse 204 |
@@ -184,6 +230,9 @@ ce qui garantit que le serveur et l'app parlent le même format.
   consultations privées demandent d'autres sources.
 - **Avis allotis** : le montant et la caution sont donnés par lot sur une page
   séparée. Pour ces avis, l'API ne donne que le nombre de lots.
+- **Résumés IA jamais générés pour de vrai** : testés avec un faux client Anthropic
+  (aucun coût engagé). Vérifiez les premiers résumés réels et le champ
+  `cache_read_input_tokens` dans le journal.
 - **Notifications jamais envoyées pour de vrai** : l'envoi a été testé contre un faux
   service Google. La première tournée avec un vrai projet Firebase fera foi.
 - **Dossiers de consultation (DCE)** : ils ne sont pas téléchargés. L'app renvoie vers

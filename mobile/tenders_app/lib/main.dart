@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'ai/ai_summary.dart';
 import 'core/config.dart';
 import 'data/tender_repository.dart';
 import 'i18n/i18n.dart';
@@ -24,6 +25,7 @@ Future<void> main() async {
           repository: ApiTenderRepository(AppConfig.apiUrl),
           push: FirebasePushService(),
           deviceSync: DeviceSync(AppConfig.apiUrl),
+          summaryApi: AiSummaryApi(AppConfig.apiUrl),
         );
   // Le démarrage ne doit jamais rester bloqué : chargement plafonné.
   await Future.any([

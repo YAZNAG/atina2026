@@ -3,6 +3,7 @@ import compression from 'compression';
 import cors from 'cors';
 import express from 'express';
 
+import { SummaryQuotaReached, SummaryUnavailable } from './ai/service.js';
 import { REGION_NAMES } from './pmmp/places.js';
 import { InvalidDevice, parseDevice } from './push/prefs.js';
 
@@ -26,7 +27,7 @@ function oneOf(v, allowed, name) {
   return v;
 }
 
-export function createApp({ store, config, now = Date.now }) {
+export function createApp({ store, config, summaries = null, now = Date.now }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(compression());
@@ -69,6 +70,7 @@ export function createApp({ store, config, now = Date.now }) {
       },
       lastSuccessAt: success?.finished_at ?? null,
       push: Boolean(config.fcmServiceAccount),
+      ai: Boolean(summaries?.enabled),
     });
   });
 
@@ -92,7 +94,25 @@ export function createApp({ store, config, now = Date.now }) {
     const t = store.byId(req.params.id);
     if (!t) return res.status(404).json({ error: 'Avis introuvable' });
     res.set('Cache-Control', 'public, max-age=300');
-    res.json(t);
+    res.json({ ...t, aiSummary: summaries?.cached(t.id)?.summary ?? null });
+  });
+
+  // Résumé IA d'un avis, rédigé à la première demande puis gardé en base.
+  app.get('/api/tenders/:id/summary', async (req, res) => {
+    if (!store.byId(req.params.id)) return res.status(404).json({ error: 'Avis introuvable' });
+    if (!summaries?.enabled) return res.status(503).json({ error: 'Résumés IA non configurés' });
+    try {
+      const s = await summaries.get(req.params.id);
+      res.set('Cache-Control', 'public, max-age=3600');
+      res.json({ id: req.params.id, ...s.summary, model: s.model, createdAt: s.createdAt });
+    } catch (err) {
+      if (err instanceof SummaryQuotaReached) {
+        return res.status(429).json({ error: 'Plafond quotidien de résumés atteint, réessayez demain' });
+      }
+      if (err instanceof SummaryUnavailable) return res.status(422).json({ error: err.message });
+      console.error('Résumé IA impossible :', err.message);
+      res.status(502).json({ error: 'Service de résumé indisponible, réessayez plus tard' });
+    }
   });
 
   app.use((_req, res) => res.status(404).json({ error: 'Route inconnue' }));

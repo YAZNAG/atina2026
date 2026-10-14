@@ -1,5 +1,9 @@
 // Lancement d'une collecte avec la configuration : partagé par la ligne de commande et
 // le planificateur du serveur.
+import Anthropic from '@anthropic-ai/sdk';
+
+import { SummaryService } from './ai/service.js';
+import { Summarizer } from './ai/summarize.js';
 import { assertCanCollect, inWindow } from './config.js';
 import { collect } from './pmmp/collector.js';
 import { PoliteClient } from './pmmp/http.js';
@@ -43,4 +47,18 @@ export async function runNotify({ store, config, log = console.log, fetchImpl, n
   const sender = new FcmSender({ account: readServiceAccount(config.fcmServiceAccount), fetchImpl });
   const stats = await notify({ store, sender, now, log });
   return { status: 'succes', ...stats };
+}
+
+/** Service de résumés ; sans clé d'API Anthropic, il répond « IA non configurée ». */
+export function createSummaryService({ store, config, client, log = console.log }) {
+  const summarizer = config.aiEnabled
+    ? new Summarizer({ client: client ?? new Anthropic(), model: config.aiModel, effort: config.aiEffort })
+    : null;
+  return new SummaryService({ store, summarizer, dailyLimit: config.aiDailyLimit, log });
+}
+
+/** Après une collecte : résumés des nouveaux avis, pour que les fiches s'ouvrent vite. */
+export async function runSummaries({ summaries, config }) {
+  if (!summaries.enabled) return { status: 'desactive', reason: "ANTHROPIC_API_KEY est vide" };
+  return { status: 'succes', ...(await summaries.precompute(config.aiPrecomputePerRun)) };
 }

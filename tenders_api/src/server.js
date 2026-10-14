@@ -2,12 +2,13 @@
 import { createApp } from './api.js';
 import { loadEnvFile, readConfig } from './config.js';
 import { openDb } from './db.js';
-import { runCollect, runNotify } from './run.js';
+import { createSummaryService, runCollect, runNotify, runSummaries } from './run.js';
 
 loadEnvFile();
 const config = readConfig();
 const store = openDb(config.dbPath);
-const app = createApp({ store, config });
+const summaries = createSummaryService({ store, config });
+const app = createApp({ store, config, summaries });
 
 app.listen(config.port, () => {
   console.log(`API des appels d'offres sur le port ${config.port}`);
@@ -53,8 +54,14 @@ function daily(hhmm, name, job) {
   plan();
 }
 
-if (config.contact) daily(config.collectAt, 'Collecte', () => runCollect({ store, config }));
+if (config.contact) {
+  daily(config.collectAt, 'Collecte', async () => ({
+    collecte: await runCollect({ store, config }),
+    resumes: await runSummaries({ summaries, config }),
+  }));
+}
 else console.warn('COLLECT_CONTACT vide : la collecte automatique est désactivée.');
+if (!config.aiEnabled) console.warn("ANTHROPIC_API_KEY vide : pas de résumés IA.");
 
 if (config.fcmServiceAccount) daily(config.notifyAt, 'Tournée de notifications', () => runNotify({ store, config }));
 else console.warn('FCM_SERVICE_ACCOUNT vide : les notifications ne sont pas envoyées.');

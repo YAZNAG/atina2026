@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../ai/ai_summary.dart';
 import '../data/tender_repository.dart';
 import '../i18n/i18n.dart';
 import '../models/alert_prefs.dart';
@@ -15,15 +16,42 @@ import '../push/push_service.dart';
 /// État partagé de l'app : avis chargés, recherche, enregistrés, téléchargements,
 /// alertes et langue. Les choix de l'utilisateur sont gardés sur le téléphone.
 class AppState extends ChangeNotifier {
-  AppState({TenderRepository? repository, PushService? push, this.deviceSync})
-    : repository = repository ?? DemoTenderRepository(),
-      push = push ?? const NoPushService();
+  AppState({
+    TenderRepository? repository,
+    PushService? push,
+    this.deviceSync,
+    this.summaryApi,
+  }) : repository = repository ?? DemoTenderRepository(),
+       push = push ?? const NoPushService();
 
   final TenderRepository repository;
 
   /// Notifications du téléphone et inscription auprès de l'API (absente en démo).
   final PushService push;
   final DeviceSync? deviceSync;
+
+  /// Résumés IA lus sur l'API ; absent en démonstration.
+  final AiSummaryApi? summaryApi;
+  final Map<String, Future<AiSummaries?>> _aiSummaries = {};
+
+  /// Résumé IA d'un avis, demandé une seule fois par session ; `null` s'il n'y en a
+  /// pas (démonstration, IA non configurée, réseau) : la fiche garde son résumé local.
+  Future<AiSummaries?> aiSummary(String id) {
+    final api = summaryApi;
+    if (api == null) return Future.value(null);
+    return _aiSummaries.putIfAbsent(id, () async {
+      try {
+        final s = await api.fetch(id);
+        if (s == null) _aiSummaries.remove(id);
+        return s;
+      } catch (_) {
+        // Réseau : on retentera à la prochaine ouverture de la fiche.
+        _aiSummaries.remove(id);
+        return null;
+      }
+    });
+  }
+
   SharedPreferences? _prefs;
 
   List<Tender> tenders = [];

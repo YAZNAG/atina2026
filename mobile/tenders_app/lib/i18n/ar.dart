@@ -262,4 +262,10 @@ const arStrings = <String, String>{
       'الإشعارات مفعّلة: ملخص كل صباح حوالي الساعة 8:30.',
   'Notifications autorisées. Enregistrez vos alertes pour les recevoir.':
       'الإشعارات مسموح بها. احفظ تنبيهاتك لتتوصل بها.',
+
+  // Résumé IA
+  'Résumé IA': 'ملخص بالذكاء الاصطناعي',
+  "L'IA lit l'avis…": 'الذكاء الاصطناعي يقرأ الإعلان…',
+  "Rédigé par une IA à partir de l'avis publié : vérifiez toujours le dossier officiel.":
+      'كتبه ذكاء اصطناعي انطلاقًا من الإعلان المنشور: تحقّق دائمًا من الملف الرسمي.',
 };
