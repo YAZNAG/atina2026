@@ -2,19 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../i18n/i18n.dart';
 
-/// Charte « clair et vert d'eau » : fonds lumineux, vert émeraude profond pour l'action,
-/// corail pour l'urgence. Volontairement à l'opposé de l'app d'origine (fond anthracite,
-/// accents jaunes).
+/// Charte « bleu Majorelle » : fonds clairs légèrement bleutés, bleu indigo profond pour
+/// l'action, corail pour l'urgence, terre cuite, sarcelle et framboise pour les catégories.
 class K {
-  static const primary = Color(0xFF0E7C66);
-  static const primaryDark = Color(0xFF09574A);
-  static const primarySoft = Color(0xFFE3F3EE);
-  static const primaryTint = Color(0xFFF1F9F6);
-  static const ink = Color(0xFF0F1A1C);
-  static const body = Color(0xFF465659);
-  static const muted = Color(0xFF85959A);
-  static const line = Color(0xFFE3EAE9);
-  static const bg = Color(0xFFF4F7F6);
+  static const primary = Color(0xFF3341C4);
+  static const primaryDark = Color(0xFF1F2780);
+  static const primarySoft = Color(0xFFE7E9FB);
+  static const primaryTint = Color(0xFFF4F5FE);
+  static const ink = Color(0xFF12142B);
+  static const body = Color(0xFF4B4F6B);
+  static const muted = Color(0xFF8B8FA8);
+  static const line = Color(0xFFE5E7F0);
+  static const bg = Color(0xFFF5F6FB);
   static const surface = Color(0xFFFFFFFF);
   static const coral = Color(0xFFE0533D);
   static const coralSoft = Color(0xFFFDEBE7);
@@ -23,10 +22,15 @@ class K {
 
   static const travaux = Color(0xFFC2410C);
   static const travauxSoft = Color(0xFFFFEFE5);
-  static const services = Color(0xFF2563EB);
-  static const servicesSoft = Color(0xFFE8F0FF);
-  static const fournitures = Color(0xFF7C3AED);
-  static const fournituresSoft = Color(0xFFF2EBFF);
+  static const services = Color(0xFF0F766E);
+  static const servicesSoft = Color(0xFFE1F4F1);
+  static const fournitures = Color(0xFFBE185D);
+  static const fournituresSoft = Color(0xFFFCE8F1);
+
+  /// Dégradés de l'en-tête et du logo (du clair vers [primaryDark]).
+  static const headerStart = Color(0xFF4351D6);
+  static const logoStart = Color(0xFF5A67E8);
+  static const accent = Color(0xFF7C4DDB);
 }
 
 /// Rayons d'arrondi.
@@ -39,7 +43,7 @@ class R {
 }
 
 const softShadow = [
-  BoxShadow(color: Color(0x0D0F1A1C), blurRadius: 16, offset: Offset(0, 6)),
+  BoxShadow(color: Color(0x0D12142B), blurRadius: 16, offset: Offset(0, 6)),
 ];
 
 ThemeData appTheme() {

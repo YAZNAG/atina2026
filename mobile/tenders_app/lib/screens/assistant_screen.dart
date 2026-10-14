@@ -101,7 +101,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
               height: 34,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [K.primary, Color(0xFF6D5BD0)],
+                  colors: [K.primary, K.accent],
                 ),
                 borderRadius: BorderRadius.circular(11),
               ),
@@ -155,7 +155,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                           height: 72,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [K.primary, Color(0xFF6D5BD0)],
+                              colors: [K.primary, K.accent],
                             ),
                             borderRadius: BorderRadius.circular(24),
                           ),

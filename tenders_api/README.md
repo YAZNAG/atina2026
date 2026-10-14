@@ -1,4 +1,4 @@
-# API des appels d'offres (Mounaqasa)
+# API des appels d'offres (SAFA9AT)
 
 Ce serveur collecte les **appels d'offres ouverts** publiés sur le
 [portail marocain des marchés publics](https://www.marchespublics.gov.ma/) et les sert à
@@ -138,7 +138,7 @@ soumissionnaires. Ces règles sont dans le code et couvertes par les tests :
 |---|---|
 | Une requête à la fois | Les appels passent dans une file. Il n'y a jamais deux requêtes en parallèle. |
 | Pause entre requêtes | 3 s par défaut, **2 s au minimum** (`PMMP_DELAY_MS`). |
-| Identité déclarée | `User-Agent: MounaqasaBot/1.0 (…; +<COLLECT_CONTACT>)`. **Sans contact, la collecte refuse de démarrer.** |
+| Identité déclarée | `User-Agent: Safa9atBot/1.0 (…; +<COLLECT_CONTACT>)`. **Sans contact, la collecte refuse de démarrer.** |
 | `robots.txt` respecté | Il est lu avant toute page. Une interdiction arrête la collecte. |
 | Aucun forçage | Pas de nouvelle tentative, pas de proxy, pas de contournement. Un HTTP 403 ou 429 arrête la collecte immédiatement. |
 | Coupe-circuit | La collecte s'arrête après 3 erreurs serveur ou délais dépassés d'affilée (`PMMP_MAX_ERRORS`). |

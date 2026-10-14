@@ -11,8 +11,8 @@ import { InvalidDevice, matchesPrefs, parseDevice } from '../src/push/prefs.js';
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const ACCOUNT = {
-  project_id: 'mounaqasa-test',
-  client_email: 'push@mounaqasa-test.iam.gserviceaccount.com',
+  project_id: 'safa9at-test',
+  client_email: 'push@safa9at-test.iam.gserviceaccount.com',
   private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }),
   private_key_id: 'cle1',
   token_uri: 'https://oauth2.test/token',
@@ -113,7 +113,7 @@ test('FCM : un seul jeton OAuth pour plusieurs envois, message au format v1', as
   assert.equal(await sender.send(TOKEN2, { title: 'T2', body: 'B2' }), 'ok');
   assert.equal(calls.filter((c) => c.url === ACCOUNT.token_uri).length, 1);
   const msg = calls.at(-1);
-  assert.equal(msg.url, 'https://fcm.googleapis.com/v1/projects/mounaqasa-test/messages:send');
+  assert.equal(msg.url, 'https://fcm.googleapis.com/v1/projects/safa9at-test/messages:send');
   assert.equal(msg.init.headers.Authorization, 'Bearer ya29.test');
   const body = JSON.parse(msg.init.body).message;
   assert.equal(body.token, TOKEN2);

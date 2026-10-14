@@ -1,10 +1,10 @@
 /// Identité de l'application, regroupée ici pour pouvoir la renommer en un seul endroit.
 ///
-/// Le nom est provisoire : il doit rester distinct de celui de l'app dont on reprend
-/// les fonctionnalités (Safaqat), comme le logo et les textes.
+/// SAFA9AT s'écrit صفقات en arabe (« marchés »). Le « 9 » note le ق, comme dans
+/// l'arabe écrit en lettres latines.
 class AppConfig {
-  static const name = 'Mounaqasa';
-  static const nameAr = 'مناقصة';
+  static const name = 'SAFA9AT';
+  static const nameAr = 'صفقات';
   static const version = '1.0.0';
 
   /// Adresse de l'API (`tenders_api`), fixée à la compilation :

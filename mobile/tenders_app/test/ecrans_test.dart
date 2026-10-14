@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mounaqasa/i18n/i18n.dart';
-import 'package:mounaqasa/main.dart';
-import 'package:mounaqasa/screens/alerts_screen.dart';
-import 'package:mounaqasa/state/app_state.dart';
+import 'package:safa9at/i18n/i18n.dart';
+import 'package:safa9at/main.dart';
+import 'package:safa9at/screens/alerts_screen.dart';
+import 'package:safa9at/state/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'polices.dart';

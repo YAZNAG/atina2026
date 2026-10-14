@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mounaqasa/data/assistant.dart';
-import 'package:mounaqasa/data/demo_tenders.dart';
-import 'package:mounaqasa/i18n/i18n.dart';
-import 'package:mounaqasa/models/alert_prefs.dart';
-import 'package:mounaqasa/models/filter.dart';
-import 'package:mounaqasa/models/tender.dart';
+import 'package:safa9at/data/assistant.dart';
+import 'package:safa9at/data/demo_tenders.dart';
+import 'package:safa9at/i18n/i18n.dart';
+import 'package:safa9at/models/alert_prefs.dart';
+import 'package:safa9at/models/filter.dart';
+import 'package:safa9at/models/tender.dart';
 
 void main() {
   final now = DateTime(2026, 10, 14, 9);

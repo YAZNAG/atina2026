@@ -1,12 +1,16 @@
-# Mounaqasa — appels d'offres au Maroc
+# SAFA9AT — appels d'offres au Maroc
 
 Application Flutter qui reprend les **fonctionnalités** de « Safaqat : Marchés publics »
 (Google Play `app.safaqat`) avec un **design entièrement différent**. Elle permet de consulter
 les appels d'offres publics et privés au Maroc.
 
-> Le nom « Mounaqasa / مناقصة » est provisoire et se change à un seul endroit :
-> `lib/core/config.dart`. Le nom, le logo et les textes doivent rester distincts de
-> l'app d'origine.
+> Le nom affiché (« SAFA9AT », « صفقات » en arabe) se change à un seul endroit :
+> `lib/core/config.dart`. Les noms des plateformes sont à reprendre à la main :
+> `android:label` (`AndroidManifest.xml`), `CFBundleDisplayName` (`Info.plist`) et `web/`.
+>
+> **Attention :** « SAFA9AT » se prononce comme « Safaqat », le nom de l'app d'origine.
+> Avant de publier, vérifiez que ce nom est libre (marque déposée, fiches App Store et
+> Play Store), car les stores refusent les noms trop proches d'une app existante.
 
 **Stack** : Flutter 3.47 / Dart 3.13 · `intl` · `shared_preferences` · `http` · `url_launcher` · `firebase_messaging`.
 
@@ -36,10 +40,11 @@ Toutes les captures sont dans `captures/`. Pour les régénérer :
 
 ## Design
 
-Un thème clair, vert émeraude et corail, à l'opposé de l'app d'origine (fond anthracite,
-accents jaunes). L'accueil a un en-tête en dégradé avec la recherche intégrée. Les cartes
-sont arrondies et colorées par catégorie (Travaux en orange, Services en bleu, Fournitures en
-violet). L'échéance s'affiche en vert, puis ambre sous 7 jours et corail sous 3 jours. La
+Un thème clair « bleu Majorelle » : bleu indigo pour l'action, corail pour l'urgence, à
+l'opposé de l'app d'origine (fond anthracite, accents jaunes). L'accueil a un en-tête en
+dégradé indigo avec la recherche intégrée. Les cartes sont arrondies et colorées par
+catégorie (Travaux en terre cuite, Services en sarcelle, Fournitures en framboise).
+L'échéance s'affiche en bleu, puis ambre sous 7 jours et corail sous 3 jours. La
 barre du bas compte cinq onglets. Les couleurs sont regroupées dans `lib/theme/theme.dart`.
 
 ## Données : exemples ou vrais avis
@@ -85,7 +90,7 @@ sans notifications. Les notifications sont aussi désactivées en mode exemples.
 
 1. Sur la [console Firebase](https://console.firebase.google.com/), créez un projet
    (le même que pour le serveur).
-2. **Android** : ajoutez une app Android avec l'identifiant `ma.mounaqasa.mounaqasa`.
+2. **Android** : ajoutez une app Android avec l'identifiant `ma.safa9at.app`.
    Téléchargez `google-services.json` et placez-le dans `android/app/`. Le plugin Google
    Services s'applique alors automatiquement.
 3. **iOS** :
@@ -115,7 +120,7 @@ sans notifications. Les notifications sont aussi désactivées en mode exemples.
    assistant conversationnel et la lecture du CPS pourraient suivre le même chemin.
 4. **Les consultations privées** : le portail ne publie que les marchés publics.
 5. **Publication** : icône de l'app (le logo actuel est dessiné en Flutter, l'icône du
-   lanceur est encore celle de Flutter), identifiant définitif (`ma.mounaqasa.mounaqasa`
+   lanceur est encore celle de Flutter), identifiant définitif (`ma.safa9at.app`
    aujourd'hui), signature et fiches App Store / Play Store.
 
 ## Lancer

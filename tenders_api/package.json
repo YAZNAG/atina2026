@@ -2,7 +2,7 @@
   "name": "tenders-api",
   "version": "1.0.0",
   "private": true,
-  "description": "Collecte des appels d'offres du portail marocain des marchés publics et API de l'app Mounaqasa",
+  "description": "Collecte des appels d'offres du portail marocain des marchés publics et API de l'app SAFA9AT",
   "type": "module",
   "main": "src/server.js",
   "engines": {

@@ -469,7 +469,7 @@ class _SummaryState extends State<_Summary> {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFFEAF6F2), Color(0xFFF2EFFF)],
+              colors: [K.primarySoft, Color(0xFFFDF0EA)],
             ),
             border: Border.all(color: K.line),
           ),

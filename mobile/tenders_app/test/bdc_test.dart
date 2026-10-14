@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mounaqasa/data/assistant.dart';
-import 'package:mounaqasa/data/demo_tenders.dart';
-import 'package:mounaqasa/i18n/i18n.dart';
-import 'package:mounaqasa/main.dart';
-import 'package:mounaqasa/models/alert_prefs.dart';
-import 'package:mounaqasa/models/filter.dart';
-import 'package:mounaqasa/models/tender.dart';
-import 'package:mounaqasa/state/app_state.dart';
+import 'package:safa9at/data/assistant.dart';
+import 'package:safa9at/data/demo_tenders.dart';
+import 'package:safa9at/i18n/i18n.dart';
+import 'package:safa9at/main.dart';
+import 'package:safa9at/models/alert_prefs.dart';
+import 'package:safa9at/models/filter.dart';
+import 'package:safa9at/models/tender.dart';
+import 'package:safa9at/state/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'polices.dart';

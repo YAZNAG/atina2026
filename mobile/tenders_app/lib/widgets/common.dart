@@ -6,7 +6,7 @@ import '../models/tender.dart';
 import '../state/scope.dart';
 import '../theme/theme.dart';
 
-/// Logo : une loupe sur un dossier, dans un carré arrondi vert.
+/// Logo : une loupe sur un dossier, dans un carré arrondi bleu.
 class AppLogo extends StatelessWidget {
   final double size;
   const AppLogo({super.key, this.size = 40});
@@ -21,7 +21,7 @@ class AppLogo extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF14A085), K.primaryDark],
+          colors: [K.logoStart, K.primaryDark],
         ),
       ),
       child: Stack(

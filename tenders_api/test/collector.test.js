@@ -74,7 +74,7 @@ function setup(portal, overrides = {}) {
   const store = openDb(':memory:');
   const client = new PoliteClient({
     baseUrl: BASE,
-    userAgent: 'MounaqasaBot/1.0 (+test@example.ma)',
+    userAgent: 'Safa9atBot/1.0 (+test@example.ma)',
     delayMs: 15,
     timeoutMs: 2000,
     maxConsecutiveErrors: 3,
@@ -117,7 +117,7 @@ test('politesse : une requête à la fois, pause, identité et cookie de session
   for (let i = 1; i < portal.requests.length; i++) {
     assert.ok(portal.requests[i].at - portal.requests[i - 1].at >= 14, `pause avant la requête ${i}`);
   }
-  for (const q of portal.requests) assert.equal(q.headers['User-Agent'], 'MounaqasaBot/1.0 (+test@example.ma)');
+  for (const q of portal.requests) assert.equal(q.headers['User-Agent'], 'Safa9atBot/1.0 (+test@example.ma)');
   assert.equal(portal.requests[0].path, '/robots.txt');
   assert.match(portal.requests.at(-1).headers.Cookie, /PHPSESSID=abc/);
 });

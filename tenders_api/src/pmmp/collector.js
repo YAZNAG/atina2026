@@ -28,7 +28,7 @@ async function checkRobots(client, paths) {
     if (err instanceof CollectStopped) throw err;
     // Pas de robots.txt (404) : aucune restriction déclarée.
   }
-  const rules = parseRobots(text, 'MounaqasaBot');
+  const rules = parseRobots(text, 'Safa9atBot');
   for (const p of paths) {
     const u = new URL(p, client.baseUrl);
     if (!isAllowed(rules, u.pathname + u.search)) {

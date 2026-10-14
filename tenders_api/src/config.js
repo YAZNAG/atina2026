@@ -32,7 +32,7 @@ export function readConfig(env = process.env) {
     baseUrl: env.PMMP_BASE_URL || 'https://www.marchespublics.gov.ma/',
     searchPath: env.PMMP_SEARCH_PATH || 'index.php?page=entreprise.EntrepriseAdvancedSearch&AllCons',
     contact,
-    userAgent: `MounaqasaBot/1.0 (veille des appels d'offres; +${contact || 'contact non renseigné'})`,
+    userAgent: `Safa9atBot/1.0 (veille des appels d'offres; +${contact || 'contact non renseigné'})`,
     delayMs: Math.max(2000, int(env.PMMP_DELAY_MS, 3000)),
     timeoutMs: int(env.PMMP_TIMEOUT_MS, 30000),
     maxConsecutiveErrors: Math.min(10, Math.max(1, int(env.PMMP_MAX_ERRORS, 3))),
