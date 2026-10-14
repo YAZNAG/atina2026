@@ -7,7 +7,10 @@ class AppConfig {
   static const nameAr = 'مناقصة';
   static const version = '1.0.0';
 
-  /// Les données affichées sont des exemples tant que l'app n'est pas branchée à un
-  /// serveur qui collecte les avis du portail des marchés publics.
-  static const demoData = true;
+  /// Adresse de l'API (`tenders_api`), fixée à la compilation :
+  /// `flutter run --dart-define=API_URL=https://api.exemple.ma`.
+  static const apiUrl = String.fromEnvironment('API_URL');
+
+  /// Sans API, l'app affiche les avis d'exemple.
+  static bool get demoData => apiUrl.isEmpty;
 }

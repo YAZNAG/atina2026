@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const DemoBanner(),
+                  const SourceBanner(),
                   const SizedBox(height: 14),
                   Row(
                     children: [
@@ -152,6 +152,25 @@ class _HomeScreenState extends State<HomeScreen> {
             const SliverFillRemaining(
               hasScrollBody: false,
               child: Center(child: CircularProgressIndicator(color: K.primary)),
+            )
+          else if (state.tenders.isEmpty && state.loadError != null)
+            SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  EmptyState(
+                    icon: Icons.cloud_off_rounded,
+                    title: t('Impossible de charger les avis'),
+                    message: t(
+                      'Le serveur ne répond pas. Vérifiez votre connexion puis réessayez.',
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: state.refresh,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: Text(t('Réessayer')),
+                  ),
+                ],
+              ),
             )
           else if (results.isEmpty)
             SliverToBoxAdapter(

@@ -28,9 +28,13 @@ class DownloadsScreen extends StatelessWidget {
                 child: EmptyState(
                   icon: Icons.download_for_offline_outlined,
                   title: t('Aucun dossier téléchargé'),
-                  message: t(
-                    "Téléchargez le dossier d'un appel d'offres depuis sa fiche : il restera consultable même sans connexion.",
-                  ),
+                  message: state.isDemo
+                      ? t(
+                          "Téléchargez le dossier d'un appel d'offres depuis sa fiche : il restera consultable même sans connexion.",
+                        )
+                      : t(
+                          "La liste des avis reste consultable sans connexion. Les dossiers se téléchargent sur le portail officiel, depuis la fiche de chaque avis.",
+                        ),
                 ),
               ),
             )

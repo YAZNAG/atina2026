@@ -135,8 +135,11 @@ void main() {
             300,
             scrollable: find.byType(Scrollable).first,
           );
+          await tester.ensureVisible(find.text(t("Demander à l'assistant")));
+          await tester.pumpAndSettle();
           await tester.tap(find.text(t("Demander à l'assistant")));
           await tester.pumpAndSettle();
+          expect(find.textContaining(t("Voici l'essentiel :")), findsOneWidget);
           expect(find.textContaining(first.reference), findsWidgets);
         });
 

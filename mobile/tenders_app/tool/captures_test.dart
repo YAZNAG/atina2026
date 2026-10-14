@@ -9,6 +9,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:mounaqasa/data/tender_repository.dart';
 import 'package:mounaqasa/i18n/i18n.dart';
 import 'package:mounaqasa/main.dart';
 import 'package:mounaqasa/screens/alerts_screen.dart';
@@ -43,6 +46,7 @@ void main() {
     String lang = 'fr',
     bool onboarded = true,
     Map<String, Object> prefs = const {},
+    TenderRepository? repository,
   }) async {
     tester.view.physicalSize = const Size(390 * 2, 844 * 2);
     tester.view.devicePixelRatio = 2;
@@ -52,7 +56,7 @@ void main() {
       'onboarded': onboarded,
       ...prefs,
     });
-    final state = AppState();
+    final state = AppState(repository: repository);
     await state.load();
     await tester.pumpWidget(TendersApp(state: state));
     await tester.pumpAndSettle();
@@ -148,5 +152,30 @@ void main() {
     nav.push(TenderDetailScreen.route('t03'));
     await tester.pumpAndSettle();
     await shot('10-fiche-ar');
+  });
+
+  // Avis réels du portail, tels que les sert tenders_api (test/fixtures).
+  ApiTenderRepository portal() => ApiTenderRepository(
+    'https://api.test',
+    client: MockClient(
+      (_) async => http.Response.bytes(
+        File('test/fixtures/api_tenders.json').readAsBytesSync(),
+        200,
+      ),
+    ),
+  );
+
+  testWidgets('11 accueil portail', (tester) async {
+    await open(tester, repository: portal());
+    await shot('11-accueil-portail');
+  });
+
+  testWidgets('12 fiche portail', (tester) async {
+    final (_, nav) = await open(tester, repository: portal());
+    nav.push(TenderDetailScreen.route('o8p:1041301'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -700));
+    await tester.pumpAndSettle();
+    await shot('12-fiche-portail');
   });
 }

@@ -21,6 +21,17 @@ class AppState extends ChangeNotifier {
 
   List<Tender> tenders = [];
   bool loading = true;
+
+  /// Moment où la liste affichée a été reçue du serveur.
+  DateTime? syncedAt;
+
+  /// Serveur injoignable : la dernière liste enregistrée est affichée.
+  bool offline = false;
+
+  /// Serveur injoignable et aucune liste enregistrée.
+  String? loadError;
+
+  bool get isDemo => repository.isDemo;
   String lang = 'fr';
   bool onboarded = false;
 
@@ -70,9 +81,15 @@ class AppState extends ChangeNotifier {
     loading = true;
     notifyListeners();
     try {
-      tenders = await repository.fetchAll();
-    } catch (_) {
-      // On garde la dernière liste connue.
+      final feed = await repository.fetch();
+      tenders = feed.tenders;
+      syncedAt = feed.syncedAt;
+      offline = feed.fromCache;
+      loadError = null;
+    } catch (e) {
+      // On garde la liste déjà affichée, s'il y en a une.
+      offline = tenders.isNotEmpty;
+      loadError = '$e';
     }
     loading = false;
     notifyListeners();

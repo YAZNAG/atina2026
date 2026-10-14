@@ -31,11 +31,20 @@ class Tender {
   final DateTime deadline;
   final double? estimate;
   final double? deposit;
-  final String executionDelay;
+
+  /// Absent du portail : seuls les avis d'exemple le renseignent.
+  final String? executionDelay;
   final DateTime? siteVisit;
   final List<String> lots;
+
+  /// Nombre de lots quand leur détail n'est pas connu (avis du portail).
+  final int? lotsCount;
+  final List<String> qualifications;
   final List<TenderDocument> documents;
   final String note;
+
+  /// Fiche officielle sur le portail, où se télécharge le dossier de consultation.
+  final String? portalUrl;
 
   /// Le secteur privé publie aussi des consultations ; l'app les distingue du public.
   final bool isPrivate;
@@ -53,13 +62,63 @@ class Tender {
     required this.deadline,
     this.estimate,
     this.deposit,
-    required this.executionDelay,
+    this.executionDelay,
     this.siteVisit,
     this.lots = const [],
+    this.lotsCount,
+    this.qualifications = const [],
     this.documents = const [],
     this.note = '',
+    this.portalUrl,
     this.isPrivate = false,
   });
+
+  /// Avis renvoyé par l'API (`GET /api/tenders`). Lève [FormatException] si un
+  /// champ indispensable manque.
+  factory Tender.fromJson(Map<String, dynamic> j) {
+    String str(String k) => j[k] is String ? (j[k] as String).trim() : '';
+    DateTime? date(String k) =>
+        j[k] is String ? DateTime.tryParse(j[k] as String)?.toLocal() : null;
+    double? amount(String k) => j[k] is num ? (j[k] as num).toDouble() : null;
+
+    final id = str('id');
+    final deadline = date('deadline');
+    if (id.isEmpty || deadline == null) {
+      throw const FormatException('avis sans identifiant ou sans date limite');
+    }
+    final category = Category.values.firstWhere(
+      (c) => c.name == j['category'],
+      orElse: () => Category.services,
+    );
+    final dce = j['dceSizeKb'] is int ? j['dceSizeKb'] as int : null;
+    return Tender(
+      id: id,
+      reference: str('reference'),
+      title: str('title'),
+      buyer: str('buyer'),
+      city: str('city'),
+      region: str('region'),
+      category: category,
+      procedure: str('procedure'),
+      publishedAt: date('publishedAt') ?? date('firstSeenAt') ?? deadline,
+      deadline: deadline,
+      estimate: amount('estimate'),
+      deposit: amount('deposit'),
+      siteVisit: date('siteVisit'),
+      lotsCount: j['lotsCount'] is int ? j['lotsCount'] as int : null,
+      qualifications: j['qualifications'] is List
+          ? (j['qualifications'] as List).whereType<String>().toList()
+          : const [],
+      documents: [
+        if (dce != null)
+          TenderDocument('Dossier de consultation (DCE).zip', dce),
+      ],
+      portalUrl: str('portalUrl').isEmpty ? null : str('portalUrl'),
+    );
+  }
+
+  /// Nombre de lots, qu'on en connaisse le détail ou seulement le total.
+  int get lotTotal => lots.isNotEmpty ? lots.length : (lotsCount ?? 0);
 
   bool get isOpen => deadline.isAfter(DateTime.now());
 
@@ -67,7 +126,8 @@ class Tender {
 
   /// Texte en minuscules sans accents, pour la recherche par mots-clés.
   String get searchText => normalize(
-    '$reference $title $buyer $city $region $procedure ${lots.join(' ')} $note',
+    '$reference $title $buyer $city $region $procedure ${lots.join(' ')} '
+    '${qualifications.join(' ')} $note',
   );
 
   /// Résumé en quelques points, construit à partir des champs de l'avis.
@@ -83,10 +143,13 @@ class Tender {
       t('Caution provisoire à prévoir : {v}.', {'v': fmtMad(deposit!)})
     else
       t('Pas de caution provisoire exigée.'),
-    t("Délai d'exécution : {d}.", {'d': bidi(executionDelay)}),
+    if (executionDelay != null)
+      t("Délai d'exécution : {d}.", {'d': bidi(executionDelay!)}),
     if (siteVisit != null)
       t('Visite des lieux le {date}.', {'date': fmtDateTime(siteVisit!)}),
-    if (lots.length > 1) t('{n} lots distincts.', {'n': lots.length}),
+    if (lotTotal > 1) t('{n} lots distincts.', {'n': lotTotal}),
+    if (qualifications.isNotEmpty)
+      t('Qualification exigée : voir la liste ci-dessous.'),
     if (note.isNotEmpty) bidi(note),
   ];
 }

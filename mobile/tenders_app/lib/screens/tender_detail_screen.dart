@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../i18n/i18n.dart';
 import '../models/tender.dart';
@@ -164,8 +165,49 @@ class TenderDetailScreen extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 16),
-          _Documents(x),
+          if (x.qualifications.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Panel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SectionTitle(t('Qualifications exigées')),
+                  for (final q in x.qualifications)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(top: 2),
+                            child: Icon(
+                              Icons.workspace_premium_outlined,
+                              size: 16,
+                              color: K.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              bidi(q),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: K.body,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+          if (x.documents.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _Documents(x),
+          ],
           const SizedBox(height: 16),
           PrimaryButton(
             outlined: true,
@@ -304,11 +346,18 @@ class _InfoGrid extends StatelessWidget {
         t("Lieu d'exécution"),
         '${bidi(x.city)}\n${bidi(x.region)}',
       ),
-      (
-        Icons.hourglass_bottom_rounded,
-        t("Délai d'exécution"),
-        bidi(x.executionDelay),
-      ),
+      if (x.executionDelay != null)
+        (
+          Icons.hourglass_bottom_rounded,
+          t("Délai d'exécution"),
+          bidi(x.executionDelay!),
+        ),
+      if (x.lots.isEmpty && x.lotTotal > 1)
+        (
+          Icons.view_module_outlined,
+          t('Allotissement'),
+          t('{n} lots', {'n': x.lotTotal}),
+        ),
       if (x.siteVisit != null)
         (
           Icons.directions_walk_rounded,
@@ -570,6 +619,17 @@ class _DownloadBar extends StatelessWidget {
           ),
         ],
       );
+    } else if (x.portalUrl != null) {
+      // Avis réel : le dossier se retire sur le portail officiel.
+      button = PrimaryButton(
+        icon: Icons.open_in_new_rounded,
+        label: x.dossierSizeKb > 0
+            ? t('Dossier sur le portail officiel ({size})', {
+                'size': fmtSize(x.dossierSizeKb),
+              })
+            : t('Voir sur le portail officiel'),
+        onPressed: () => openPortal(context, x.portalUrl!),
+      );
     } else {
       button = PrimaryButton(
         icon: Icons.download_rounded,
@@ -592,6 +652,22 @@ class _DownloadBar extends StatelessWidget {
           child: SizedBox(height: 52, child: Center(child: button)),
         ),
       ),
+    );
+  }
+}
+
+/// Ouvre la fiche officielle dans le navigateur du téléphone.
+Future<void> openPortal(BuildContext context, String url) async {
+  final messenger = ScaffoldMessenger.of(context);
+  var ok = false;
+  try {
+    ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  } catch (_) {
+    ok = false;
+  }
+  if (!ok) {
+    messenger.showSnackBar(
+      SnackBar(content: Text(t("Impossible d'ouvrir le portail"))),
     );
   }
 }

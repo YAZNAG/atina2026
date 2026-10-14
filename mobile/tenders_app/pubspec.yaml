@@ -15,8 +15,14 @@ dependencies:
   # Dates et montants au format français ou arabe marocain.
   intl: ^0.20.2
 
-  # Enregistrés, téléchargements, préférences d'alertes et langue.
+  # Appels à l'API des appels d'offres.
+  http: ^1.6.0
+
+  # Enregistrés, téléchargements, alertes, langue et dernière liste reçue.
   shared_preferences: ^2.3.3
+
+  # Ouvrir l'avis officiel sur le portail des marchés publics.
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:

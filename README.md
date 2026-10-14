@@ -37,6 +37,7 @@ ATINA-2/
 │       │   └── widgets/
 │       └── test/         # 97 tests : chaque écran en FR et en AR
 │   └── tenders_app/      # Flutter — appels d'offres au Maroc (voir son README)
+├── tenders_api/          # Node.js — collecte du portail des marchés publics + API de tenders_app
 ├── mobile_rn/
 │   └── agent_app/        # React Native + Expo — application agent
 ├── docs/                 # crédits des photos du catalogue

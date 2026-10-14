@@ -8,7 +8,7 @@ les appels d'offres publics et privés au Maroc.
 > `lib/core/config.dart`. Le nom, le logo et les textes doivent rester distincts de
 > l'app d'origine.
 
-**Stack** : Flutter 3.47 / Dart 3.13 · `intl` · `shared_preferences`. Pas d'autre dépendance.
+**Stack** : Flutter 3.47 / Dart 3.13 · `intl` · `shared_preferences` · `http` · `url_launcher`.
 
 ## Captures
 
@@ -26,8 +26,8 @@ Toutes les captures sont dans `captures/`. Pour les régénérer :
 | Consultation des appels d'offres publics et privés | Onglet **Explorer** : liste des avis ouverts, compteurs (ouverts, nouveaux 48 h, clôture sous 7 j) |
 | Recherche par mots-clés | Barre de recherche : objet, acheteur, ville, référence, accents ignorés |
 | Filtres avancés | Écran **Filtres** : catégorie, secteur privé, date limite, publication, montant, procédure, région, avec le nombre de résultats en direct |
-| Télécharger les consultations en un clic | Bouton **Télécharger le dossier** sur la fiche |
-| Toujours disponibles (hors ligne) | Onglet **Hors ligne** : dossiers téléchargés, espace utilisé, suppression |
+| Télécharger les consultations en un clic | Bouton du bas de la fiche : avis officiel sur le portail (exemples : téléchargement simulé) |
+| Toujours disponibles (hors ligne) | Dernière liste gardée sur le téléphone ; onglet **Hors ligne** pour les dossiers (mode exemples) |
 | Notifications selon vos préférences | Écran **Alertes** : nouveaux avis, rappels de date limite (1, 3 ou 7 j), catégories, mots-clés, régions |
 | AI Summaries | Bloc **En bref** sur chaque fiche |
 | AI Assistant | Onglet **Assistant** : recherche en langage courant (« travaux à Marrakech », « fournitures de plus de 5 millions »…) |
@@ -41,24 +41,39 @@ sont arrondies et colorées par catégorie (Travaux en orange, Services en bleu,
 violet). L'échéance s'affiche en vert, puis ambre sous 7 jours et corail sous 3 jours. La
 barre du bas compte cinq onglets. Les couleurs sont regroupées dans `lib/theme/theme.dart`.
 
-## Ce qui reste à brancher
+## Données : exemples ou vrais avis
 
-L'app fonctionne entièrement avec **18 avis de démonstration** (références `DEMO-…`,
-signalés par un bandeau). Pour une mise en production, il manque :
+L'app a deux modes, choisis à la compilation :
 
-1. **Un serveur qui collecte les avis** depuis le portail marocain des marchés publics (et
-   les sources privées) et les expose en API. Côté app, il suffit d'écrire une autre
-   implémentation de `TenderRepository` (`lib/data/tender_repository.dart`), puis de passer
-   `AppConfig.demoData` à `false`.
-2. **Le vrai téléchargement des pièces** : `AppState.download` simule aujourd'hui le
-   transfert. Il faudra écrire les fichiers reçus du serveur dans le stockage de l'app
-   (paquet `path_provider`) et les ouvrir (`open_filex` ou équivalent).
-3. **Les notifications push** : les préférences sont enregistrées, mais l'envoi demande le
+- **Sans `API_URL`** : 18 avis d'exemple (références `DEMO-…`), signalés par un bandeau.
+  Pratique pour montrer l'app ou travailler sur le design.
+- **Avec `API_URL`** : les vrais avis ouverts, collectés sur le portail marocain des
+  marchés publics par le serveur `tenders_api/` (voir son README). Le bandeau indique la
+  source et l'heure de mise à jour. La dernière liste reçue est gardée sur le
+  téléphone : sans réseau, l'app l'affiche avec un bandeau « Hors connexion ».
+  Le bouton du bas de chaque fiche ouvre l'**avis officiel** sur le portail, où se
+  télécharge le dossier de consultation.
+
+```bash
+flutter run --dart-define=API_URL=https://api.exemple.ma
+```
+
+| Exemples | Vrais avis |
+|---|---|
+| ![](captures/2-accueil.png) | ![](captures/11-accueil-portail.png) |
+
+## Ce qui reste à faire
+
+1. **Mettre le serveur en ligne** (`tenders_api/`) et lancer une première collecte réelle.
+   Le serveur n'a jamais tourné contre le portail réel : il a été validé sur des pages
+   réelles enregistrées.
+2. **Les notifications push** : les préférences sont enregistrées, mais l'envoi demande le
    serveur et Firebase Cloud Messaging / APNs.
-4. **L'IA** : le résumé est construit à partir des champs de l'avis, et l'assistant
+3. **L'IA** : le résumé est construit à partir des champs de l'avis, et l'assistant
    comprend les demandes par mots-clés, sans connexion. Un vrai modèle de langage
    (lecture du CPS, réponses libres) doit passer par le serveur, car la clé d'API ne peut
    pas être embarquée dans l'app.
+4. **Les consultations privées** : le portail ne publie que les marchés publics.
 5. **Publication** : icône de l'app (le logo actuel est dessiné en Flutter, l'icône du
    lanceur est encore celle de Flutter), identifiant définitif (`ma.mounaqasa.mounaqasa`
    aujourd'hui), signature et fiches App Store / Play Store.
@@ -69,8 +84,8 @@ signalés par un bandeau). Pour une mise en production, il manque :
 flutter pub get
 flutter run                 # téléphone ou émulateur branché
 flutter run -d chrome       # aperçu dans le navigateur
-flutter test                # 44 tests : logique + chaque écran en FR et AR, grand et petit téléphone
-flutter build apk --release
+flutter test                # 52 tests : logique, API, chaque écran en FR et AR, grand et petit téléphone
+flutter build apk --release --dart-define=API_URL=https://api.exemple.ma
 flutter build ipa           # sur macOS avec Xcode
 ```
 

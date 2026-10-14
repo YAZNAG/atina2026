@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/config.dart';
 import '../i18n/i18n.dart';
 import '../models/tender.dart';
+import '../state/scope.dart';
 import '../theme/theme.dart';
 
 /// Logo : une loupe sur un dossier, dans un carré arrondi vert.
@@ -299,29 +300,55 @@ class EmptyState extends StatelessWidget {
   }
 }
 
-/// Bandeau rappelant que les avis sont des exemples.
-class DemoBanner extends StatelessWidget {
-  const DemoBanner({super.key});
+/// Bandeau d'origine des avis : exemples, liste du portail à jour, ou dernière liste
+/// enregistrée quand le serveur est injoignable.
+class SourceBanner extends StatelessWidget {
+  const SourceBanner({super.key});
 
   @override
   Widget build(BuildContext context) {
-    if (!AppConfig.demoData) return const SizedBox.shrink();
+    final state = AppScope.of(context);
+    final at = state.syncedAt;
+    final (icon, text, fg, bg) = state.isDemo
+        ? (
+            Icons.science_outlined,
+            t('Données de démonstration : ces avis sont des exemples.'),
+            K.amber,
+            K.amberSoft,
+          )
+        : state.offline
+        ? (
+            Icons.cloud_off_rounded,
+            t('Hors connexion : liste enregistrée {when}', {
+              'when': at == null ? '' : agoLabel(at),
+            }),
+            K.amber,
+            K.amberSoft,
+          )
+        : (
+            Icons.verified_outlined,
+            t('Portail marocain des marchés publics · mis à jour {when}', {
+              'when': at == null ? '' : agoLabel(at),
+            }),
+            K.primary,
+            K.primarySoft,
+          );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: K.amberSoft,
+        color: bg,
         borderRadius: BorderRadius.circular(R.sm),
       ),
       child: Row(
         children: [
-          const Icon(Icons.science_outlined, size: 16, color: K.amber),
+          Icon(icon, size: 16, color: fg),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              t("Données de démonstration : ces avis sont des exemples."),
-              style: const TextStyle(
+              text,
+              style: TextStyle(
                 fontSize: 12,
-                color: K.amber,
+                color: fg,
                 fontWeight: FontWeight.w600,
               ),
             ),

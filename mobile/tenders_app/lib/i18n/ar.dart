@@ -218,4 +218,26 @@ const arStrings = <String, String>{
   'Disponible hors ligne': 'متاح دون اتصال',
   'Téléchargé {when}': 'تم التحميل {when}',
   'Télécharger le dossier ({size})': 'تحميل الملف ({size})',
+
+  // Données réelles
+  'Qualification exigée : voir la liste ci-dessous.':
+      'التأهيل مطلوب: انظر القائمة أدناه.',
+  'La liste des avis reste consultable sans connexion. Les dossiers se téléchargent sur le portail officiel, depuis la fiche de chaque avis.':
+      'تبقى قائمة الإعلانات متاحة دون اتصال. تُحمَّل الملفات من البوابة الرسمية، انطلاقًا من صفحة كل إعلان.',
+  'Impossible de charger les avis': 'تعذّر تحميل الإعلانات',
+  'Le serveur ne répond pas. Vérifiez votre connexion puis réessayez.':
+      'الخادم لا يستجيب. تحقّق من اتصالك ثم أعد المحاولة.',
+  'Réessayer': 'إعادة المحاولة',
+  'Portail marocain des marchés publics · {when}':
+      'بوابة الصفقات العمومية المغربية · {when}',
+  'Portail marocain des marchés publics · mis à jour {when}':
+      'بوابة الصفقات العمومية المغربية · حُيّنت {when}',
+  'Hors connexion : liste enregistrée {when}': 'دون اتصال: قائمة محفوظة {when}',
+  'Qualifications exigées': 'التأهيلات المطلوبة',
+  'Allotissement': 'التقسيم إلى حصص',
+  '{n} lots': '{n} حصص',
+  'Dossier sur le portail officiel ({size})':
+      'الملف على البوابة الرسمية ({size})',
+  'Voir sur le portail officiel': 'عرض على البوابة الرسمية',
+  "Impossible d'ouvrir le portail": 'تعذّر فتح البوابة',
 };

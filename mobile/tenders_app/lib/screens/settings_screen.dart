@@ -113,9 +113,13 @@ class SettingsScreen extends StatelessWidget {
                 _Row(
                   icon: Icons.info_outline_rounded,
                   title: t('Source des données'),
-                  subtitle: AppConfig.demoData
+                  subtitle: state.isDemo
                       ? t('Exemples de démonstration, en attendant le serveur')
-                      : t('Portail marocain des marchés publics'),
+                      : state.syncedAt == null
+                      ? t('Portail marocain des marchés publics')
+                      : t('Portail marocain des marchés publics · {when}', {
+                          'when': agoLabel(state.syncedAt!),
+                        }),
                 ),
                 const Divider(indent: 56),
                 _Row(

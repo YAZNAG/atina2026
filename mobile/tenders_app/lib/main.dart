@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/config.dart';
+import 'data/tender_repository.dart';
 import 'i18n/i18n.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/shell.dart';
@@ -12,7 +13,11 @@ import 'theme/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final state = AppState();
+  final state = AppState(
+    repository: AppConfig.demoData
+        ? DemoTenderRepository()
+        : ApiTenderRepository(AppConfig.apiUrl),
+  );
   // Le démarrage ne doit jamais rester bloqué : chargement plafonné.
   await Future.any([
     Future.wait([state.load(), I18n.loadDateSymbols()]),
