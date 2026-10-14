@@ -3,6 +3,7 @@
 // Le portail trie la liste par date limite décroissante : les avis ouverts viennent en
 // tête, et la collecte s'arrête à la première page où tout est clôturé. Elle ne
 // parcourt donc qu'une quarantaine de pages, et non les 10 000 de l'historique.
+import { bdcDetailPath, bdcListPath, parseBdcDetail, parseBdcList } from './bdc.js';
 import { CollectStopped } from './http.js';
 import { formFields, isSearchForm, parseDetail, parseList } from './parse.js';
 import { isAllowed, parseRobots } from './robots.js';
@@ -62,7 +63,11 @@ export async function collect({ store, client, config, now = () => new Date(), l
   let reason = null;
 
   try {
-    await checkRobots(client, [config.searchPath, detailPath('x', '1')]);
+    await checkRobots(client, [
+      config.searchPath,
+      detailPath('x', '1'),
+      ...(config.bdcEnabled ? [bdcListPath(1, config.bdcListPath), bdcDetailPath('1')] : []),
+    ]);
 
     // 1. Première page : le portail renvoie soit les résultats, soit le formulaire.
     let html = (await client.get(config.searchPath)).text;
@@ -150,6 +155,28 @@ export async function collect({ store, client, config, now = () => new Date(), l
         log(`Fiche ${t.id} ignorée : ${err.message}`);
       }
     }
+
+    // 5. Bons de commande : une panne de ce module n'annule pas les appels d'offres.
+    if (config.bdcEnabled) {
+      try {
+        const b = await collectPurchaseOrders({ store, client, config, now, log });
+        stats.pages += b.pages;
+        stats.rowsSeen += b.rowsSeen;
+        stats.newCount += b.newCount;
+        stats.updatedCount += b.updatedCount;
+        stats.detailsFetched += b.detailsFetched;
+        stats.purchaseOrders = b;
+        if (b.partial && status === 'succes') {
+          status = 'partiel';
+          reason = b.partial;
+        }
+      } catch (err) {
+        if (err instanceof CollectStopped) throw err;
+        status = 'partiel';
+        reason = `bons de commande : ${err.message}`;
+        log(`Bons de commande ignorés : ${err.message}`);
+      }
+    }
   } catch (err) {
     status = err instanceof CollectStopped ? 'arrete' : 'echec';
     reason = err.message;
@@ -158,4 +185,54 @@ export async function collect({ store, client, config, now = () => new Date(), l
 
   store.finishRun(runId, { status, reason, ...stats, requests: client.requestCount }, now().toISOString());
   return { status, reason, ...stats, requests: client.requestCount };
+}
+
+/**
+ * Bons de commande : pages ?page=N jusqu'à une page vide ou répétée, puis les fiches
+ * des avis nouveaux ou modifiés.
+ */
+export async function collectPurchaseOrders({ store, client, config, now = () => new Date(), log = () => {} }) {
+  const r = { pages: 0, rowsSeen: 0, newCount: 0, updatedCount: 0, detailsFetched: 0, partial: null };
+  let previous = null;
+  let perPage = null;
+  for (let page = 1; ; page++) {
+    if (page > config.bdcMaxPages) {
+      r.partial = `bons de commande : limite de ${config.bdcMaxPages} pages atteinte`;
+      break;
+    }
+    const list = parseBdcList((await client.get(bdcListPath(page, config.bdcListPath))).text);
+    if (!list.rows.length) {
+      if (page === 1) {
+        throw new Error('aucun bon de commande lu sur la première page : la structure du module a peut-être changé');
+      }
+      break;
+    }
+    const ids = list.rows.map((x) => x.refConsultation).join(',');
+    if (ids === previous) break;
+    previous = ids;
+    perPage ??= list.rows.length;
+    r.pages += 1;
+    for (const row of list.rows) {
+      r.rowsSeen += 1;
+      const res = store.upsertListRow(row, client.url(bdcDetailPath(row.refConsultation)), now().toISOString());
+      if (res === 'new') r.newCount += 1;
+      if (res === 'updated') r.updatedCount += 1;
+    }
+    log(`Bons de commande, page ${page} : ${list.rows.length} avis`);
+    if (list.total !== null && page * perPage >= list.total) break;
+  }
+
+  for (const t of store.needingDetail(config.bdcDetailsPerRun, now().getTime(), 'bdc')) {
+    try {
+      const d = parseBdcDetail((await client.get(bdcDetailPath(t.ref_consultation))).text);
+      if (!d.reference && !d.title) throw new Error('fiche illisible');
+      store.saveDetail(t.id, t.list_hash, d, now().toISOString());
+      r.detailsFetched += 1;
+    } catch (err) {
+      if (err instanceof CollectStopped) throw err;
+      store.markDetailError(t.id);
+      log(`Fiche ${t.id} ignorée : ${err.message}`);
+    }
+  }
+  return r;
 }

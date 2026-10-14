@@ -79,6 +79,7 @@ export function createApp({ store, config, summaries = null, now = Date.now }) {
     const result = store.query({
       status: oneOf(q.status, ['open', 'all'], 'status') ?? 'open',
       q: typeof q.q === 'string' ? q.q.slice(0, 200) : '',
+      kind: oneOf(q.kind, ['ao', 'bdc'], 'kind'),
       category: oneOf(q.category, CATEGORIES, 'category'),
       region: oneOf(q.region, REGION_NAMES, 'region'),
       sort: oneOf(q.sort, SORTS, 'sort') ?? 'recent',

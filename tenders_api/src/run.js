@@ -25,7 +25,14 @@ export async function runCollect({ store, config, force = false, log = console.l
       };
     }
     // En journée, le portail sert d'abord les entreprises : essai réduit.
-    limits = { ...config, maxPages: 1, detailsPerRun: Math.min(10, config.detailsPerRun), pageSize: Math.min(config.pageSize, 20) };
+    limits = {
+      ...config,
+      maxPages: 1,
+      detailsPerRun: Math.min(10, config.detailsPerRun),
+      pageSize: Math.min(config.pageSize, 20),
+      bdcMaxPages: 1,
+      bdcDetailsPerRun: Math.min(5, config.bdcDetailsPerRun),
+    };
     log('Hors plage horaire : essai limité à 1 page et 10 fiches');
   }
   const client = new PoliteClient({

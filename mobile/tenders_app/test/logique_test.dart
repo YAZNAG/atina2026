@@ -24,7 +24,7 @@ void main() {
       'sans critère : tous les avis ouverts, du plus récent au plus ancien',
       () {
         final r = const TenderFilter().apply(all, '', now);
-        expect(r.length, all.length);
+        expect(r.length, all.where((x) => !x.cancelled).length);
         for (var i = 1; i < r.length; i++) {
           expect(
             r[i - 1].publishedAt.isAfter(r[i].publishedAt) ||

@@ -76,19 +76,25 @@ void main() {
           await tester.enterText(find.byType(TextField).first, 'éclairage');
           await tester.pumpAndSettle();
           expect(state.results.length, 1);
-          expect(find.text(t("1 appel d'offres")), findsOneWidget);
+          expect(find.text(t('{n} avis', {'n': 1})), findsOneWidget);
 
           await tester.enterText(find.byType(TextField).first, 'zzzz');
           await tester.pumpAndSettle();
-          expect(find.text(t('Aucun résultat')), findsOneWidget);
+          expect(state.results, isEmpty);
+          await tester.scrollUntilVisible(
+            find.text(t('Aucun résultat')),
+            200,
+            scrollable: find.byType(Scrollable).first,
+          );
           await tester.ensureVisible(find.text(t('Tout réinitialiser')));
           await tester.pumpAndSettle();
           await tester.tap(find.text(t('Tout réinitialiser')));
           await tester.pumpAndSettle();
           expect(state.query, isEmpty);
 
+          // Puce « Tous » des catégories (le sélecteur de type a aussi un « Tous »).
           await tester.scrollUntilVisible(
-            find.text(t('Tous')),
+            find.byIcon(Icons.apps_rounded),
             -300,
             scrollable: find.byType(Scrollable).first,
           );
@@ -97,7 +103,7 @@ void main() {
           await tester.tap(find.text(t('Fournitures')).first);
           await tester.pumpAndSettle();
           expect(
-            state.results.every((x) => x.category.name == 'fournitures'),
+            state.results.every((x) => x.category?.name == 'fournitures'),
             isTrue,
           );
         });

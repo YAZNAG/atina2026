@@ -153,6 +153,12 @@ class SearchAssistant {
     'merci',
     'bonjour',
     'salut',
+    'bon',
+    'bons',
+    'commande',
+    'commandes',
+    'bdc',
+    'devis',
   };
 
   AssistantReply answer(String message, {Tender? about}) {
@@ -216,6 +222,13 @@ class SearchAssistant {
         sort: SortBy.recent,
       );
       understood.add(t('publiés depuis 48 h'));
+    }
+
+    if (q.contains('bon de commande') ||
+        q.contains('bons de commande') ||
+        words.contains('bdc')) {
+      filter = filter.withKind(TenderKind.bdc);
+      understood.add(t('bons de commande'));
     }
 
     if (q.contains('prive')) {

@@ -42,7 +42,14 @@ class TenderCard extends StatelessWidget {
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      CategoryPill(x.category),
+                      if (x.isPurchaseOrder)
+                        Pill(
+                          label: t('Bon de commande'),
+                          color: K.amber,
+                          background: K.amberSoft,
+                          icon: Icons.receipt_long_outlined,
+                        ),
+                      if (x.category != null) CategoryPill(x.category!),
                       DeadlinePill(x.deadline),
                       if (x.isPrivate)
                         Pill(

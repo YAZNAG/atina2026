@@ -31,6 +31,7 @@ Toutes les captures sont dans `captures/`. Pour les régénérer :
 | Notifications selon vos préférences | Écran **Alertes** : nouveaux avis, rappels de date limite (1, 3 ou 7 j), catégories, mots-clés, régions. Notifications push envoyées par le serveur chaque matin |
 | AI Summaries | **Résumé IA** sur chaque fiche (Claude, via le serveur) en français et en arabe ; résumé automatique de l'app en mode exemples ou si l'IA est indisponible |
 | AI Assistant | Onglet **Assistant** : recherche en langage courant (« travaux à Marrakech », « fournitures de plus de 5 millions »…) |
+| Bons de commande | Sélecteur **Tous / Appels d'offres / Bons de commande** sur l'accueil, pastille sur les cartes, « date limite de remise des devis » sur la fiche, choix des types dans les alertes. Les avis annulés sont masqués |
 | — | En plus : avis **enregistrés**, interface **français / arabe** (RTL) |
 
 ## Design
@@ -45,7 +46,7 @@ barre du bas compte cinq onglets. Les couleurs sont regroupées dans `lib/theme/
 
 L'app a deux modes, choisis à la compilation :
 
-- **Sans `API_URL`** : 18 avis d'exemple (références `DEMO-…`), signalés par un bandeau.
+- **Sans `API_URL`** : 22 avis d'exemple, dont 4 bons de commande (références `DEMO-…`), signalés par un bandeau.
   Pratique pour montrer l'app ou travailler sur le design.
 - **Avec `API_URL`** : les vrais avis ouverts, collectés sur le portail marocain des
   marchés publics par le serveur `tenders_api/` (voir son README). Le bandeau indique la
@@ -123,7 +124,7 @@ sans notifications. Les notifications sont aussi désactivées en mode exemples.
 flutter pub get
 flutter run                 # téléphone ou émulateur branché
 flutter run -d chrome       # aperçu dans le navigateur
-flutter test                # 68 tests : logique, API, notifications, résumés IA, chaque écran en FR et AR
+flutter test                # 74 tests : logique, API, notifications, résumés IA, bons de commande, chaque écran en FR et AR
 flutter build apk --release --dart-define=API_URL=https://api.exemple.ma
 flutter build ipa           # sur macOS avec Xcode
 ```

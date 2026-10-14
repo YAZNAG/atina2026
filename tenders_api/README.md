@@ -101,6 +101,34 @@ Mise en place, une seule fois :
 npm run notify      # envoie la tournée du jour maintenant (pour tester)
 ```
 
+## Bons de commande
+
+Le portail publie aussi les **bons de commande** (« avis d'achat » : petits achats sur
+simple devis) dans un module séparé, `/bdc/entreprise/consultation/`. Le collecteur les
+lit après les appels d'offres, avec les mêmes règles de politesse :
+
+1. Il parcourt les pages `?page=1, 2, 3…` jusqu'à une page vide ou répétée, ou jusqu'au
+   nombre de résultats annoncé (au plus `BDC_MAX_PAGES`).
+2. Chaque avis est repéré par le lien vers sa fiche (`/show/<id>`). Ses champs sont lus
+   d'après leurs intitulés : référence, objet, acheteur public, date limite de remise
+   des devis, lieu d'exécution, et la mention « Annulé ».
+3. Il lit ensuite la fiche des bons de commande nouveaux ou modifiés : catégorie, date
+   de publication, montant estimatif s'il est publié (au plus `BDC_DETAILS_PER_RUN`).
+
+Dans l'API, chaque avis porte `kind` (`ao` pour un appel d'offres, `bdc` pour un bon de
+commande) et `cancelled`. Les avis annulés ne sont jamais renvoyés comme ouverts, et
+`GET /api/tenders?kind=bdc` ne renvoie que les bons de commande. Une panne de ce module
+ne fait pas échouer la collecte des appels d'offres : elle est marquée « partielle ».
+
+> **À valider sur de vraies pages.** La mise en page de ce module n'a pas pu être
+> relevée depuis l'environnement de développement (portail bloqué). Les pages de test
+> `test/fixtures/bdc_*.html` sont **synthétiques**. La lecture a été écrite pour ne
+> dépendre que des liens et des intitulés, et vérifiée sur deux mises en page
+> différentes (cartes et tableau). Elle reste à confirmer sur le vrai portail : il
+> faut enregistrer une page de liste et une fiche, et les ajouter aux tests. Si rien
+> n'est lu, la collecte le signale (« aucun bon de commande lu sur la première page »)
+> au lieu d'enregistrer des données fausses.
+
 ## Règles de collecte
 
 Le portail est un service public dont dépendent toutes les entreprises
@@ -140,6 +168,7 @@ Variables principales (toutes dans `.env.example`) :
 | `COLLECT_WINDOW` | plage horaire autorisée | `00:00-07:00` |
 | `PMMP_DELAY_MS` | pause entre requêtes (≥ 2000) | `3000` |
 | `PMMP_DETAILS_PER_RUN` | fiches lues au plus par collecte | `400` |
+| `BDC_ENABLED` / `BDC_MAX_PAGES` / `BDC_DETAILS_PER_RUN` | bons de commande : actifs, pages et fiches au plus par collecte | `true` / `200` / `200` |
 | `FCM_SERVICE_ACCOUNT` | fichier JSON du compte de service Firebase, vide = pas de notifications | — |
 | `NOTIFY_AT` | heure de la tournée de notifications (Casablanca) | `08:30` |
 | `ANTHROPIC_API_KEY` | clé d'API Anthropic, vide = pas de résumés IA | — |
@@ -154,7 +183,7 @@ npm run collect              # une collecte maintenant (refusée hors plage hora
 npm run collect -- --force   # essai réduit en journée : 1 page, 10 fiches
 npm run notify               # tournée de notifications maintenant
 npm run summarize            # résumés IA des avis qui n'en ont pas
-npm test                     # 64 tests, sans requête vers le portail, Google ni Anthropic
+npm test                     # 74 tests, sans requête vers le portail, Google ni Anthropic
 ```
 
 Codes de sortie de `npm run collect` : `0` succès · `1` échec · `2` refusée (hors plage
@@ -184,7 +213,7 @@ intégrée, laissez `COLLECT_AT` vide et planifiez
 
 | Route | Réponse |
 |---|---|
-| `GET /api/tenders` | `{ total, items: [avis] }`. Paramètres : `status` (`open` par défaut, ou `all`), `q` (mots-clés, accents ignorés), `category` (`travaux`, `services`, `fournitures`), `region`, `sort` (`recent`, `deadline`, `amount`), `limit` (1 à 500, 100 par défaut), `offset` |
+| `GET /api/tenders` | `{ total, items: [avis] }`. Paramètres : `status` (`open` par défaut, ou `all`), `kind` (`ao` ou `bdc`), `q` (mots-clés, accents ignorés), `category` (`travaux`, `services`, `fournitures`), `region`, `sort` (`recent`, `deadline`, `amount`), `limit` (1 à 500, 100 par défaut), `offset` |
 | `GET /api/tenders/:id` | un avis (`id` = `orgAcronyme:refConsultation`, à encoder dans l'URL), avec `aiSummary` s'il est déjà rédigé |
 | `GET /api/tenders/:id/summary` | résumé IA `{ fr, ar }` (chacun : `headline`, `points`, `attention`, `forWhom`), rédigé à la première demande. 503 sans clé d'API, 422 si refusé, 429 si le plafond du jour est atteint |
 | `GET /api/meta` | compteurs, régions, dernière collecte, `push` (notifications configurées) |

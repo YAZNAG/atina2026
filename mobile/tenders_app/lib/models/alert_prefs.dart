@@ -9,6 +9,9 @@ class AlertPrefs {
   final Set<String> regions;
   final List<String> keywords;
 
+  /// Appels d'offres, bons de commande, ou les deux.
+  final Set<TenderKind> kinds;
+
   const AlertPrefs({
     this.newTenders = true,
     this.deadlineReminders = true,
@@ -20,6 +23,7 @@ class AlertPrefs {
     },
     this.regions = const {},
     this.keywords = const [],
+    this.kinds = const {TenderKind.ao, TenderKind.bdc},
   });
 
   AlertPrefs copyWith({
@@ -29,6 +33,7 @@ class AlertPrefs {
     Set<Category>? categories,
     Set<String>? regions,
     List<String>? keywords,
+    Set<TenderKind>? kinds,
   }) => AlertPrefs(
     newTenders: newTenders ?? this.newTenders,
     deadlineReminders: deadlineReminders ?? this.deadlineReminders,
@@ -36,12 +41,18 @@ class AlertPrefs {
     categories: categories ?? this.categories,
     regions: regions ?? this.regions,
     keywords: keywords ?? this.keywords,
+    kinds: kinds ?? this.kinds,
   );
 
   /// Un avis ouvert correspond si sa catégorie et sa région sont suivies et, quand des
   /// mots-clés existent, s'il en contient au moins un.
   bool matches(Tender x) {
-    if (!x.isOpen || !categories.contains(x.category)) return false;
+    if (!x.isOpen || !kinds.contains(x.kind)) return false;
+    // Un bon de commande sans catégorie connue reste signalé (même règle que le serveur).
+    final cat = x.category;
+    if (cat == null ? !x.isPurchaseOrder : !categories.contains(cat)) {
+      return false;
+    }
     if (regions.isNotEmpty && !regions.contains(x.region)) return false;
     if (keywords.isEmpty) return true;
     final text = x.searchText;
@@ -58,6 +69,7 @@ class AlertPrefs {
     'categories': categories.map((c) => c.name).toList(),
     'regions': regions.toList(),
     'keywords': keywords,
+    'kinds': kinds.map((k) => k.name).toList(),
   };
 
   factory AlertPrefs.fromJson(Map<String, dynamic> j) {
@@ -81,6 +93,11 @@ class AlertPrefs {
           : d.categories,
       regions: strings(j['regions']).toSet(),
       keywords: strings(j['keywords']),
+      kinds: j['kinds'] is List
+          ? TenderKind.values
+                .where((k) => strings(j['kinds']).contains(k.name))
+                .toSet()
+          : d.kinds,
     );
   }
 }

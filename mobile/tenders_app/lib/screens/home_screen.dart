@@ -99,6 +99,46 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<TenderKind?>(
+                  segments: [
+                    ButtonSegment(value: null, label: Text(t('Tous'))),
+                    ButtonSegment(
+                      value: TenderKind.ao,
+                      label: Text(t("Appels d'offres")),
+                    ),
+                    ButtonSegment(
+                      value: TenderKind.bdc,
+                      label: Text(t('Bons de commande')),
+                    ),
+                  ],
+                  selected: {state.filter.kind},
+                  showSelectedIcon: false,
+                  onSelectionChanged: (s) =>
+                      state.setFilter(state.filter.withKind(s.first)),
+                  style: SegmentedButton.styleFrom(
+                    selectedBackgroundColor: K.ink,
+                    selectedForegroundColor: Colors.white,
+                    backgroundColor: K.surface,
+                    side: const BorderSide(color: K.line),
+                    // Police de l'app (Inter ou Noto Sans Arabic selon la langue).
+                    textStyle: TextStyle(
+                      fontFamily: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.fontFamily,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
             child: SizedBox(
               height: 40,
               child: ListView(
@@ -130,9 +170,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      results.length == 1
-                          ? t('1 appel d\'offres')
-                          : t('{n} appels d\'offres', {'n': results.length}),
+                      switch (state.filter.kind) {
+                        TenderKind.bdc => t('{n} bons de commande', {
+                          'n': results.length,
+                        }),
+                        TenderKind.ao =>
+                          results.length == 1
+                              ? t('1 appel d\'offres')
+                              : t('{n} appels d\'offres', {
+                                  'n': results.length,
+                                }),
+                        null => t('{n} avis', {'n': results.length}),
+                      },
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,

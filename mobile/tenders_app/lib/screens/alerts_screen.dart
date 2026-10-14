@@ -132,6 +132,25 @@ class _AlertsScreenState extends State<AlertsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                SectionTitle(t("Types d'avis")),
+                for (final (k, icon) in [
+                  (TenderKind.ao, Icons.gavel_rounded),
+                  (TenderKind.bdc, Icons.receipt_long_outlined),
+                ])
+                  _SwitchRow(
+                    icon: icon,
+                    title: k == TenderKind.ao
+                        ? t("Appels d'offres")
+                        : t('Bons de commande'),
+                    value: p.kinds.contains(k),
+                    onChanged: (v) => set(
+                      p.copyWith(
+                        kinds: v ? {...p.kinds, k} : ({...p.kinds}..remove(k)),
+                      ),
+                    ),
+                  ),
+                const Divider(),
+                const SizedBox(height: 10),
                 SectionTitle(t('Catégories suivies')),
                 for (final c in Category.values)
                   _SwitchRow(

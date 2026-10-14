@@ -14,6 +14,7 @@ import 'package:http/testing.dart';
 import 'package:mounaqasa/data/tender_repository.dart';
 import 'package:mounaqasa/i18n/i18n.dart';
 import 'package:mounaqasa/main.dart';
+import 'package:mounaqasa/models/tender.dart';
 import 'package:mounaqasa/screens/alerts_screen.dart';
 import 'package:mounaqasa/screens/assistant_screen.dart';
 import 'package:mounaqasa/screens/filters_screen.dart';
@@ -177,5 +178,12 @@ void main() {
     await tester.drag(find.byType(ListView).last, const Offset(0, -700));
     await tester.pumpAndSettle();
     await shot('12-fiche-portail');
+  });
+
+  testWidgets('13 bons de commande', (tester) async {
+    final (state, _) = await open(tester);
+    state.setFilter(state.filter.withKind(TenderKind.bdc));
+    await tester.pumpAndSettle();
+    await shot('13-bons-de-commande');
   });
 }

@@ -197,7 +197,7 @@ void main() {
           ),
           findsNothing,
         );
-        expect(find.textContaining('Sidi Kacem'), findsWidgets);
+        expect(state.results.any((x) => x.city == 'Sidi Kacem'), isTrue);
 
         final x = state.results.firstWhere((x) => x.id == 'o8p:1041301');
         await tester.scrollUntilVisible(

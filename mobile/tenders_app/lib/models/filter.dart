@@ -76,6 +76,9 @@ class TenderFilter {
   final PublishedWindow published;
   final Budget budget;
   final bool privateOnly;
+
+  /// Appels d'offres ou bons de commande ; `null` : les deux.
+  final TenderKind? kind;
   final SortBy sort;
 
   const TenderFilter({
@@ -86,6 +89,7 @@ class TenderFilter {
     this.published = PublishedWindow.any,
     this.budget = Budget.any,
     this.privateOnly = false,
+    this.kind,
     this.sort = SortBy.recent,
   });
 
@@ -116,14 +120,29 @@ class TenderFilter {
     published: published ?? this.published,
     budget: budget ?? this.budget,
     privateOnly: privateOnly ?? this.privateOnly,
+    kind: kind,
     sort: sort ?? this.sort,
   );
 
+  /// Change le type d'avis affiché (`null` : les deux).
+  TenderFilter withKind(TenderKind? k) => TenderFilter(
+    categories: categories,
+    regions: regions,
+    procedures: procedures,
+    deadline: deadline,
+    published: published,
+    budget: budget,
+    privateOnly: privateOnly,
+    kind: k,
+    sort: sort,
+  );
+
   /// Garde le tri choisi, retire tous les critères.
-  TenderFilter cleared() => TenderFilter(sort: sort);
+  TenderFilter cleared() => TenderFilter(sort: sort, kind: kind);
 
   bool matches(Tender x, String query, DateTime now) {
-    if (!x.deadline.isAfter(now)) return false;
+    if (x.cancelled || !x.deadline.isAfter(now)) return false;
+    if (kind != null && x.kind != kind) return false;
     if (categories.isNotEmpty && !categories.contains(x.category)) return false;
     if (regions.isNotEmpty && !regions.contains(x.region)) return false;
     if (procedures.isNotEmpty && !procedures.contains(x.procedure)) {

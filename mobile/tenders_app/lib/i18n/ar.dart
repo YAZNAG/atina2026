@@ -268,4 +268,14 @@ const arStrings = <String, String>{
   "L'IA lit l'avis…": 'الذكاء الاصطناعي يقرأ الإعلان…',
   "Rédigé par une IA à partir de l'avis publié : vérifiez toujours le dossier officiel.":
       'كتبه ذكاء اصطناعي انطلاقًا من الإعلان المنشور: تحقّق دائمًا من الملف الرسمي.',
+
+  // Bons de commande
+  "Appel d'offres": 'طلب عروض',
+  "Appels d'offres": 'طلبات العروض',
+  'Bon de commande': 'سند طلب',
+  'Bons de commande': 'سندات الطلب',
+  'bons de commande': 'سندات الطلب',
+  "Types d'avis": 'أنواع الإعلانات',
+  'Date limite de remise des devis': 'آخر أجل لإيداع الأثمان',
+  '{n} bons de commande': '{n} سندات طلب',
 };

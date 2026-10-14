@@ -71,7 +71,14 @@ class TenderDetailScreen extends StatelessWidget {
             spacing: 6,
             runSpacing: 6,
             children: [
-              CategoryPill(x.category),
+              if (x.isPurchaseOrder)
+                Pill(
+                  label: t('Bon de commande'),
+                  color: K.amber,
+                  background: K.amberSoft,
+                  icon: Icons.receipt_long_outlined,
+                ),
+              if (x.category != null) CategoryPill(x.category!),
               Pill(
                 label: x.procedure,
                 color: K.body,
@@ -269,7 +276,9 @@ class _DeadlineCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      t('Date limite de dépôt'),
+                      x.isPurchaseOrder
+                          ? t('Date limite de remise des devis')
+                          : t('Date limite de dépôt'),
                       style: const TextStyle(fontSize: 12, color: K.body),
                     ),
                     const SizedBox(height: 2),

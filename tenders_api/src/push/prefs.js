@@ -5,6 +5,7 @@ import { searchKey } from '../db.js';
 import { REGION_NAMES } from '../pmmp/places.js';
 
 export const CATEGORIES = ['travaux', 'services', 'fournitures'];
+export const KINDS = ['ao', 'bdc'];
 
 export class InvalidDevice extends Error {}
 
@@ -27,6 +28,7 @@ export function parseDevice(body) {
   const p = b.prefs && typeof b.prefs === 'object' ? b.prefs : {};
   const list = (v) => (Array.isArray(v) ? v.filter(isStr) : []);
   const categories = list(p.categories).filter((c) => CATEGORIES.includes(c));
+  const kinds = list(p.kinds).filter((k) => KINDS.includes(k));
   const regions = list(p.regions).filter((r) => REGION_NAMES.includes(r));
   const keywords = list(p.keywords).map((k) => k.trim()).filter(Boolean);
   if (keywords.length > 30 || keywords.some((k) => k.length > 80)) {
@@ -50,6 +52,8 @@ export function parseDevice(body) {
       deadlineReminders: p.deadlineReminders !== false,
       reminderDays,
       categories: Array.isArray(p.categories) ? [...new Set(categories)] : [...CATEGORIES],
+      // Applis plus anciennes : sans « kinds », appels d'offres et bons de commande.
+      kinds: Array.isArray(p.kinds) ? [...new Set(kinds)] : [...KINDS],
       regions: [...new Set(regions)],
       keywords: [...new Set(keywords)],
     },
@@ -68,7 +72,9 @@ function tenderText(t) {
  * Catégorie suivie, région suivie (ou toutes), et au moins un mot-clé s'il y en a.
  */
 export function matchesPrefs(t, prefs) {
-  if (!prefs.categories.includes(t.category)) return false;
+  if (prefs.kinds && !prefs.kinds.includes(t.kind ?? 'ao')) return false;
+  // Un bon de commande sans catégorie connue reste signalé.
+  if (t.category ? !prefs.categories.includes(t.category) : t.kind !== 'bdc') return false;
   if (prefs.regions.length && !prefs.regions.includes(t.region)) return false;
   if (!prefs.keywords.length) return true;
   const text = ` ${tenderText(t)} `;

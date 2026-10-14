@@ -11,6 +11,16 @@ extension CategoryLabel on Category {
   };
 }
 
+/// Type d'avis : appel d'offres, ou bon de commande (petit achat sur devis).
+enum TenderKind { ao, bdc }
+
+extension TenderKindLabel on TenderKind {
+  String get label => switch (this) {
+    TenderKind.ao => t("Appel d'offres"),
+    TenderKind.bdc => t('Bon de commande'),
+  };
+}
+
 class TenderDocument {
   final String name;
   final int sizeKb;
@@ -25,7 +35,14 @@ class Tender {
   final String buyer;
   final String city;
   final String region;
-  final Category category;
+
+  /// Inconnue pour certains bons de commande.
+  final Category? category;
+
+  final TenderKind kind;
+
+  /// Avis annulé par l'acheteur (bons de commande).
+  final bool cancelled;
   final String procedure;
   final DateTime publishedAt;
   final DateTime deadline;
@@ -71,6 +88,8 @@ class Tender {
     this.note = '',
     this.portalUrl,
     this.isPrivate = false,
+    this.kind = TenderKind.ao,
+    this.cancelled = false,
   });
 
   /// Avis renvoyé par l'API (`GET /api/tenders`). Lève [FormatException] si un
@@ -86,10 +105,10 @@ class Tender {
     if (id.isEmpty || deadline == null) {
       throw const FormatException('avis sans identifiant ou sans date limite');
     }
-    final category = Category.values.firstWhere(
-      (c) => c.name == j['category'],
-      orElse: () => Category.services,
-    );
+    final category = Category.values
+        .where((c) => c.name == j['category'])
+        .firstOrNull;
+    final kind = j['kind'] == 'bdc' ? TenderKind.bdc : TenderKind.ao;
     final dce = j['dceSizeKb'] is int ? j['dceSizeKb'] as int : null;
     return Tender(
       id: id,
@@ -114,13 +133,17 @@ class Tender {
           TenderDocument('Dossier de consultation (DCE).zip', dce),
       ],
       portalUrl: str('portalUrl').isEmpty ? null : str('portalUrl'),
+      kind: kind,
+      cancelled: j['cancelled'] == true,
     );
   }
 
   /// Nombre de lots, qu'on en connaisse le détail ou seulement le total.
   int get lotTotal => lots.isNotEmpty ? lots.length : (lotsCount ?? 0);
 
-  bool get isOpen => deadline.isAfter(DateTime.now());
+  bool get isOpen => !cancelled && deadline.isAfter(DateTime.now());
+
+  bool get isPurchaseOrder => kind == TenderKind.bdc;
 
   int get dossierSizeKb => documents.fold(0, (s, d) => s + d.sizeKb);
 

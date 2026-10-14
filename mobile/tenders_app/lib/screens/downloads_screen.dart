@@ -109,12 +109,12 @@ class DownloadsScreen extends StatelessWidget {
                                 width: 46,
                                 height: 46,
                                 decoration: BoxDecoration(
-                                  color: x.category.soft,
+                                  color: x.category?.soft ?? K.bg,
                                   borderRadius: BorderRadius.circular(R.md),
                                 ),
                                 child: Icon(
                                   Icons.folder_rounded,
-                                  color: x.category.color,
+                                  color: x.category?.color ?? K.body,
                                 ),
                               ),
                               const SizedBox(width: 12),

@@ -6,7 +6,9 @@ import { DatabaseSync } from 'node:sqlite';
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS tenders (
-  id                TEXT PRIMARY KEY,          -- « orgAcronyme:refConsultation »
+  id                TEXT PRIMARY KEY,          -- « orgAcronyme:refConsultation », « bdc:<id> »
+  kind              TEXT NOT NULL DEFAULT 'ao',-- ao (appel d'offres), bdc (bon de commande)
+  cancelled         INTEGER NOT NULL DEFAULT 0,
   ref_consultation  TEXT NOT NULL,
   org_acronyme      TEXT NOT NULL,
   reference         TEXT,
@@ -100,10 +102,23 @@ export function searchKey(s) {
 
 const ts = (iso) => (iso ? Date.parse(iso) : null);
 
+/** Bases créées avant l'ajout des bons de commande : colonnes ajoutées sur place. */
+function migrate(db) {
+  const exists = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'tenders'").get();
+  if (!exists) return;
+  const cols = db.prepare('PRAGMA table_info(tenders)').all().map((c) => c.name);
+  if (!cols.includes('kind')) db.exec("ALTER TABLE tenders ADD COLUMN kind TEXT NOT NULL DEFAULT 'ao'");
+  if (!cols.includes('cancelled')) db.exec('ALTER TABLE tenders ADD COLUMN cancelled INTEGER NOT NULL DEFAULT 0');
+}
+
+/** Avis encore ouvert : date limite à venir et pas annulé. */
+const OPEN = 'deadline_ts > ? AND cancelled = 0';
+
 export function openDb(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
+  migrate(db);
   db.exec(SCHEMA);
   return new TenderStore(db);
 }
@@ -123,19 +138,21 @@ export class TenderStore {
    */
   upsertListRow(row, portalUrl, now) {
     const id = `${row.orgAcronyme}:${row.refConsultation}`;
+    const kind = row.kind ?? 'ao';
+    const cancelled = row.cancelled ? 1 : 0;
     const hash = createHash('sha1')
-      .update(JSON.stringify([row.reference, row.title, row.buyer, row.procedure, row.category, row.deadline, row.place, row.lotsCount]))
+      .update(JSON.stringify([row.reference, row.title, row.buyer, row.procedure, row.category, row.deadline, row.place, row.lotsCount, cancelled]))
       .digest('hex');
     const existing = this.db.prepare('SELECT list_hash FROM tenders WHERE id = ?').get(id);
     const search = searchKey([row.reference, row.title, row.buyer, row.place, row.city, row.region, row.procedure].join(' '));
 
     if (!existing) {
       this.db.prepare(`
-        INSERT INTO tenders (id, ref_consultation, org_acronyme, reference, title, buyer, procedure,
+        INSERT INTO tenders (id, kind, cancelled, ref_consultation, org_acronyme, reference, title, buyer, procedure,
           category, published_at, published_ts, deadline, deadline_ts, place, city, region, lots_count,
           portal_url, search_text, list_hash, first_seen_at, last_seen_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-        id, row.refConsultation, row.orgAcronyme, row.reference, row.title, row.buyer, row.procedure,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+        id, kind, cancelled, row.refConsultation, row.orgAcronyme, row.reference, row.title, row.buyer, row.procedure,
         row.category, row.publishedAt, ts(row.publishedAt), row.deadline, ts(row.deadline), row.place,
         row.city, row.region, row.lotsCount, portalUrl, search, hash, now, now, now,
       );
@@ -147,13 +164,13 @@ export class TenderStore {
     }
     // Rectificatif ou report : la fiche sera relue au prochain passage.
     this.db.prepare(`
-      UPDATE tenders SET reference = ?, title = ?, buyer = ?, procedure = ?, category = ?,
+      UPDATE tenders SET cancelled = ?, reference = ?, title = ?, buyer = ?, procedure = ?, category = ?,
         published_at = COALESCE(?, published_at), published_ts = COALESCE(?, published_ts),
         deadline = ?, deadline_ts = ?, place = ?, city = ?, region = ?,
         lots_count = COALESCE(?, lots_count), search_text = ?, list_hash = ?, detail_errors = 0,
         last_seen_at = ?, updated_at = ?
       WHERE id = ?`).run(
-      row.reference, row.title, row.buyer, row.procedure, row.category, row.publishedAt,
+      cancelled, row.reference, row.title, row.buyer, row.procedure, row.category, row.publishedAt,
       ts(row.publishedAt), row.deadline, ts(row.deadline), row.place, row.city, row.region,
       row.lotsCount, search, hash, now, now, id,
     );
@@ -161,13 +178,13 @@ export class TenderStore {
   }
 
   /** Avis encore ouverts dont la fiche n'a jamais été lue, ou plus à jour. */
-  needingDetail(limit, nowMs) {
+  needingDetail(limit, nowMs, kind = 'ao') {
     return this.db.prepare(`
       SELECT id, ref_consultation, org_acronyme, portal_url, list_hash FROM tenders
-      WHERE deadline_ts > ? AND detail_errors < 3
+      WHERE ${OPEN} AND kind = ? AND detail_errors < 3
         AND (detail_for_hash IS NULL OR detail_for_hash <> list_hash)
       ORDER BY deadline_ts ASC
-      LIMIT ?`).all(nowMs, limit);
+      LIMIT ?`).all(nowMs, kind, limit);
   }
 
   saveDetail(id, listHash, d, now) {
@@ -204,12 +221,16 @@ export class TenderStore {
    * Recherche pour l'API. `status` : « open » (par défaut) ou « all ».
    * Tous les mots de `q` doivent apparaître, accents ignorés.
    */
-  query({ status = 'open', q = '', category, region, sort = 'recent', limit = 50, offset = 0, nowMs = Date.now() } = {}) {
+  query({ status = 'open', q = '', kind, category, region, sort = 'recent', limit = 50, offset = 0, nowMs = Date.now() } = {}) {
     const where = [];
     const params = [];
     if (status !== 'all') {
-      where.push('deadline_ts > ?');
+      where.push(OPEN);
       params.push(nowMs);
+    }
+    if (kind) {
+      where.push('kind = ?');
+      params.push(kind);
     }
     if (category) {
       where.push('category = ?');
@@ -240,9 +261,10 @@ export class TenderStore {
   counts(nowMs = Date.now()) {
     return this.db.prepare(`
       SELECT COUNT(*) AS total,
-        COALESCE(SUM(CASE WHEN deadline_ts > ? THEN 1 ELSE 0 END), 0) AS open,
-        COALESCE(SUM(CASE WHEN deadline_ts > ? AND detail_for_hash IS NOT NULL THEN 1 ELSE 0 END), 0) AS openWithDetail
-      FROM tenders`).get(nowMs, nowMs);
+        COALESCE(SUM(CASE WHEN ${OPEN} THEN 1 ELSE 0 END), 0) AS open,
+        COALESCE(SUM(CASE WHEN ${OPEN} AND kind = 'bdc' THEN 1 ELSE 0 END), 0) AS openPurchaseOrders,
+        COALESCE(SUM(CASE WHEN ${OPEN} AND detail_for_hash IS NOT NULL THEN 1 ELSE 0 END), 0) AS openWithDetail
+      FROM tenders`).get(nowMs, nowMs, nowMs);
   }
 
   startRun(now) {
@@ -298,7 +320,7 @@ export class TenderStore {
   /** Avis encore ouverts apparus depuis `sinceIso`. */
   newTendersSince(sinceIso, nowMs) {
     return this.db
-      .prepare(`SELECT * FROM tenders WHERE first_seen_at > ? AND deadline_ts > ?
+      .prepare(`SELECT * FROM tenders WHERE first_seen_at > ? AND ${OPEN}
         ORDER BY published_ts DESC, id`)
       .all(sinceIso, nowMs)
       .map(toApi);
@@ -368,7 +390,7 @@ export class TenderStore {
       SELECT t.id FROM tenders t
       LEFT JOIN ai_summaries s ON s.tender_id = t.id
         AND s.source_hash = t.list_hash || ':' || COALESCE(t.detail_for_hash, '')
-      WHERE t.deadline_ts > ? AND t.detail_for_hash IS NOT NULL AND s.tender_id IS NULL
+      WHERE t.deadline_ts > ? AND t.cancelled = 0 AND t.detail_for_hash IS NOT NULL AND s.tender_id IS NULL
       ORDER BY t.published_ts DESC, t.id
       LIMIT ?`).all(nowMs, limit).map((r) => r.id);
   }
@@ -386,6 +408,8 @@ export class TenderStore {
 function toApi(r) {
   return {
     id: r.id,
+    kind: r.kind,
+    cancelled: r.cancelled === 1,
     reference: r.reference,
     title: r.title,
     buyer: r.buyer,
