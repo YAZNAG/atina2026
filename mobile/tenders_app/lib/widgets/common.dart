@@ -5,36 +5,18 @@ import '../i18n/i18n.dart';
 import '../models/tender.dart';
 import '../state/scope.dart';
 import '../theme/theme.dart';
+import 'brand_icon.dart';
 
-/// Logo : une loupe sur un dossier, dans un carré arrondi bleu.
+/// Logo : la même image que l'icône de l'app (voir [BrandIconPainter]).
 class AppLogo extends StatelessWidget {
   final double size;
   const AppLogo({super.key, this.size = 40});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(size * 0.3),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [K.logoStart, K.primaryDark],
-        ),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Icon(
-            Icons.folder_open_rounded,
-            color: Colors.white.withValues(alpha: 0.35),
-            size: size * 0.62,
-          ),
-          Icon(Icons.search_rounded, color: Colors.white, size: size * 0.46),
-        ],
-      ),
+    return CustomPaint(
+      size: Size.square(size),
+      painter: const BrandIconPainter(),
     );
   }
 }

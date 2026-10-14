@@ -50,3 +50,6 @@ app.*.map.json
 # Configuration Firebase propre à chaque déploiement (voir README)
 /android/app/google-services.json
 /ios/Runner/GoogleService-Info.plist
+
+# Originaux des icônes, régénérés par tool/icon/icons_test.dart
+/tool/icon/*.png

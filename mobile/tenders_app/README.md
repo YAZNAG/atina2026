@@ -47,6 +47,30 @@ catégorie (Travaux en terre cuite, Services en sarcelle, Fournitures en framboi
 L'échéance s'affiche en bleu, puis ambre sous 7 jours et corail sous 3 jours. La
 barre du bas compte cinq onglets. Les couleurs sont regroupées dans `lib/theme/theme.dart`.
 
+### Icône
+
+Une feuille d'avis sous une loupe corail, sur un fond bleu Majorelle orné d'une étoile à
+huit branches (khatam). Le logo de l'app et les icônes viennent du même dessin :
+`lib/widgets/brand_icon.dart`.
+
+![](store/apercu-icone.png)
+
+| Fichiers | Usage |
+|---|---|
+| `android/…/mipmap-*/ic_launcher.png` | Android 7 et avant |
+| `android/…/mipmap-anydpi-v26/ic_launcher.xml` + calques `ic_launcher_{background,foreground,monochrome}` | Android 8 et plus (icône adaptative), icônes à thème d'Android 13 |
+| `android/…/drawable/ic_stat_notification.xml` | petite icône des notifications |
+| `ios/Runner/Assets.xcassets/AppIcon.appiconset/` | iOS (carré plein, sans transparence) |
+| `web/favicon.png`, `web/icons/` | navigateur et app web installée |
+| `store/play-store-icon-512.png`, `store/app-store-icon-1024.png` | fiches Play Store et App Store |
+
+Pour modifier l'icône, changer le dessin puis régénérer tous les fichiers :
+
+```bash
+flutter test --update-goldens tool/icon/icons_test.dart   # originaux 1024 × 1024
+python3 tool/icon/make_icons.py                           # toutes les tailles (Pillow)
+```
+
 ## Données : exemples ou vrais avis
 
 L'app a deux modes, choisis à la compilation :
@@ -119,9 +143,9 @@ sans notifications. Les notifications sont aussi désactivées en mode exemples.
    résumés IA passent déjà par le serveur (clé d'API Anthropic côté serveur). Un
    assistant conversationnel et la lecture du CPS pourraient suivre le même chemin.
 4. **Les consultations privées** : le portail ne publie que les marchés publics.
-5. **Publication** : icône de l'app (le logo actuel est dessiné en Flutter, l'icône du
-   lanceur est encore celle de Flutter), identifiant définitif (`ma.safa9at.app`
-   aujourd'hui), signature et fiches App Store / Play Store.
+5. **Publication** : vérifier que le nom est libre, signature, captures et textes des
+   fiches App Store / Play Store (les icônes des fiches sont dans `store/`).
+   L'identifiant est `ma.safa9at.app`.
 
 ## Lancer
 
@@ -149,4 +173,5 @@ flutter build ipa           # sur macOS avec Xcode
 | `lib/i18n/` | traduction FR/AR, formats de date, de montant et de taille |
 | `lib/theme/` | couleurs, rayons, thème Material |
 | `test/` | tests de logique et d'écrans |
-| `tool/` | génération des captures |
+| `tool/` | génération des captures et des icônes |
+| `store/` | icônes des fiches App Store et Play Store, aperçu de l'icône |
